@@ -47,6 +47,7 @@ export default function ComparadorScreen() {
 }
 
 function TreatmentCard({ opt }: { opt: TreatmentOption }) {
+  const router = useRouter();
   return (
     <Card style={styles.card} padded={false}>
       {/* Imagen */}
@@ -82,7 +83,7 @@ function TreatmentCard({ opt }: { opt: TreatmentOption }) {
         <Button
           label="VER DETALLES"
           left={<Ionicons name="arrow-forward" size={18} color={palette.white} />}
-          onPress={() => {}}
+          onPress={() => router.push('/videos')}
           style={styles.detailBtn}
         />
       </View>
