@@ -97,6 +97,24 @@ export default function HomeScreen() {
         }
       />
 
+      {/* ---------- Educación ---------- */}
+      <Pressable onPress={() => router.push('/videos')} accessibilityRole="button" accessibilityLabel="Videos Educativos">
+        <LinearGradient
+          colors={[palette.teal, palette.primary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.eduCard}>
+          <View style={styles.eduIcon}>
+            <Ionicons name="school" size={24} color={palette.white} />
+          </View>
+          <View style={styles.eduTextCol}>
+            <Text style={styles.eduTitle}>Videos Educativos</Text>
+            <Text style={styles.eduSub}>Aprendé sobre tratamientos y el Rincón de los Chicos 🧒</Text>
+          </View>
+          <Ionicons name="arrow-forward" size={20} color={palette.white} />
+        </LinearGradient>
+      </Pressable>
+
       {/* ---------- Acceso Rápido ---------- */}
       <Text style={styles.sectionTitle}>Acceso Rápido</Text>
       <View style={styles.quickGrid}>
@@ -278,6 +296,26 @@ const styles = StyleSheet.create({
     marginTop: spacing['2xl'],
     marginBottom: spacing.md,
   },
+
+  eduCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginTop: spacing.lg,
+  },
+  eduIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eduTextCol: { flex: 1 },
+  eduTitle: { ...typography.subtitle, color: palette.white },
+  eduSub: { ...typography.caption, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
   quickGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
