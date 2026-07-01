@@ -83,7 +83,7 @@ function TreatmentCard({ opt }: { opt: TreatmentOption }) {
         <Button
           label="VER DETALLES"
           left={<Ionicons name="arrow-forward" size={18} color={palette.white} />}
-          onPress={() => router.push('/videos')}
+          onPress={() => router.push('/diagnosis/presupuesto')}
           style={styles.detailBtn}
         />
       </View>

@@ -32,6 +32,13 @@
         }
       ],
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "DentalAI necesita acceso a tus fotos para subir tu título y matrícula.",
+          "cameraPermission": "DentalAI necesita la cámara para fotografiar tu título."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",

@@ -90,6 +90,13 @@ export default function SpecialistProfileScreen() {
               <ReviewCard key={r.id} r={r} />
             ))}
           </ScrollView>
+          <Button
+            label="Escribir una reseña"
+            variant="outline"
+            left={<Ionicons name="star-outline" size={18} color={palette.primary} />}
+            onPress={() => router.push(`/booking/rate?id=${s.id}`)}
+            style={styles.reviewBtn}
+          />
 
           {/* Horarios */}
           <Text style={styles.sectionTitle}>Horarios Disponibles</Text>
@@ -254,6 +261,7 @@ const styles = StyleSheet.create({
   reviewName: { ...typography.bodyStrong, color: palette.textPrimary },
   stars: { flexDirection: 'row', gap: 2, marginTop: spacing.sm },
   reviewText: { ...typography.caption, color: palette.textSecondary, marginTop: spacing.sm, lineHeight: 19 },
+  reviewBtn: { marginTop: spacing.lg },
 
   weekLabel: { ...typography.caption, color: palette.textSecondary, marginTop: spacing.sm },
   slotsRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.md },

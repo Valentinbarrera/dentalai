@@ -12,6 +12,8 @@ export default function DiagnosisLayout() {
       }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="comparador" />
+      <Stack.Screen name="presupuesto" />
+      <Stack.Screen name="pago-opciones" />
     </Stack>
   );
 }

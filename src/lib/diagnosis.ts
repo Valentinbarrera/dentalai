@@ -65,3 +65,66 @@ export const TREATMENT_OPTIONS: TreatmentOption[] = [
     accent: ['#0EA5E9', '#22D3EE'],
   },
 ];
+
+/* ---------------- Presupuestador ---------------- */
+
+export type BudgetItem = { id: string; label: string; price: string; note: string; qty?: string };
+
+export const BUDGET_ITEMS: BudgetItem[] = [
+  { id: 'b1', label: 'Consulta Inicial y Diagnóstico', price: '$150', note: 'Incluye radiografías' },
+  { id: 'b2', label: 'Tomografía 3D', price: '$300', note: 'Para planificación' },
+  { id: 'b3', label: 'Implantes Dentales (Titanio)', qty: '2x', price: '$2,000', note: 'Alta calidad' },
+  { id: 'b4', label: 'Coronas de Zirconio', qty: '2x', price: '$1,800', note: 'Estética superior' },
+  { id: 'b5', label: 'Procedimiento Quirúrgico', price: '$250', note: 'Incluye anestesia' },
+];
+
+export const BUDGET_SUMMARY = { subtotal: '$4,500', tax: '$0', total: '$4,500' };
+
+export type FinancingOption = { id: string; months: string; monthly: string; note: string };
+
+export const FINANCING_OPTIONS: FinancingOption[] = [
+  { id: 'f12', months: '12 Meses', monthly: '$375/mo', note: 'Sin intereses' },
+  { id: 'f24', months: '24 Meses', monthly: '$187.50/mo', note: 'Sin intereses' },
+  { id: 'f36', months: '36 Meses', monthly: '$125/mo', note: 'Interés 5%' },
+];
+
+export type PaymentPlan = {
+  id: string;
+  title: string;
+  highlight?: string;
+  total?: string;
+  totalOld?: string;
+  initial?: string;
+  monthly?: string;
+  monthlyNote?: string;
+  cta: string;
+  primary?: boolean;
+};
+
+export const PAYMENT_PLANS: PaymentPlan[] = [
+  {
+    id: 'full',
+    title: 'Pago Completo',
+    highlight: 'Descuento 5%',
+    total: '$4,275',
+    totalOld: '$4,500',
+    cta: 'Pagar Ahora',
+    primary: true,
+  },
+  {
+    id: 'bank',
+    title: 'Cuotas Bancarias',
+    initial: '$1000',
+    monthly: '$137/mo',
+    monthlyNote: '36 meses',
+    cta: 'Simular Crédito',
+  },
+  {
+    id: 'clinic',
+    title: 'Financiación Interna Clínica',
+    initial: '$500',
+    monthly: '$165/mo',
+    monthlyNote: '24 meses',
+    cta: 'Solicitar Financiación',
+  },
+];

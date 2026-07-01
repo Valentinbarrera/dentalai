@@ -77,6 +77,20 @@ export default function PortalScreen() {
           style={styles.newBtn}
         />
 
+        {/* Credenciales */}
+        <Pressable onPress={() => router.push('/portal-credentials')}>
+          <Card style={styles.credCard}>
+            <View style={styles.credIcon}>
+              <MaterialCommunityIcons name="certificate-outline" size={22} color={palette.primary} />
+            </View>
+            <View style={styles.credFlex}>
+              <Text style={styles.credTitle}>Completá tus credenciales</Text>
+              <Text style={styles.credSub}>Cargá tu título y matrícula para verificar tu perfil.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={palette.textMuted} />
+          </Card>
+        </Pressable>
+
         {/* Métricas */}
         <MetricCard icon="calendar-outline" label="Turnos hoy" value="14" delta="12%" progress={0.75} tone={palette.primary} />
         <MetricCard icon="clipboard-outline" label="Turnos semana" value="68" delta="5%" progress={0.6} tone={palette.teal} />
@@ -253,6 +267,12 @@ const styles = StyleSheet.create({
   greeting: { ...typography.h1, color: palette.textPrimary, marginTop: spacing.sm },
   subGreeting: { ...typography.body, color: palette.textSecondary, marginTop: spacing.xs },
   newBtn: { marginTop: spacing.lg, alignSelf: 'flex-start' },
+
+  credCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.lg },
+  credFlex: { flex: 1 },
+  credIcon: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  credTitle: { ...typography.bodyStrong, color: palette.textPrimary },
+  credSub: { ...typography.caption, color: palette.textSecondary, marginTop: 2 },
 
   metric: { marginTop: spacing.lg },
   metricTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
