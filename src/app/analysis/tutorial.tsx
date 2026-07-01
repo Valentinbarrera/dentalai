@@ -1,0 +1,230 @@
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { CameraGuide } from '@/components/analysis/camera-guide';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { palette, radius, shadow, spacing, typography } from '@/theme/tokens';
+
+type Rule = {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+  negative?: boolean;
+};
+
+const RULES: Rule[] = [
+  {
+    icon: <Ionicons name="sunny" size={22} color={palette.teal} />,
+    title: 'Buena Iluminación',
+    desc: 'Usá luz natural o un ambiente bien iluminado.',
+  },
+  {
+    icon: <MaterialCommunityIcons name="emoticon-happy-outline" size={22} color={palette.teal} />,
+    title: 'Boca Abierta',
+    desc: 'Mostrá todos los dientes posibles en la toma.',
+  },
+  {
+    icon: <MaterialCommunityIcons name="hand-back-right-off-outline" size={22} color={palette.danger} />,
+    title: 'Sin Obstáculos',
+    desc: 'Evitá cubrir los dientes con la lengua o labios.',
+    negative: true,
+  },
+  {
+    icon: <MaterialCommunityIcons name="motion-outline" size={22} color={palette.danger} />,
+    title: 'Sin Movimiento',
+    desc: 'Mantené la cámara estable para evitar fotos borrosas.',
+    negative: true,
+  },
+];
+
+const STEPS = [
+  { title: 'Buscá luz clara', desc: 'Acercate a una ventana o encendé una luz frontal brillante.' },
+  { title: 'Alineá la guía', desc: 'Colocá tus dientes dentro del óvalo en pantalla.' },
+  { title: 'Seguí las instrucciones', desc: 'DENTA IA te guiará para capturar diferentes ángulos.' },
+];
+
+export default function TutorialScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} accessibilityLabel="Volver" style={styles.back}>
+          <Ionicons name="arrow-back" size={24} color={palette.primary} />
+        </Pressable>
+        <Text style={styles.headerTitle}>Instrucciones de Análisis</Text>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <Text style={styles.intro}>
+          Para que DENTA IA pueda analizar tu salud bucal con precisión, seguí estas reglas básicas
+          al tomar tus fotografías.
+        </Text>
+
+        {/* Reglas 2x2 */}
+        <View style={styles.rulesGrid}>
+          {RULES.map((r) => (
+            <RuleCard key={r.title} {...r} />
+          ))}
+        </View>
+
+        {/* Guía paso a paso */}
+        <Card style={styles.guideCard}>
+          <Text style={styles.guideTitle}>Guía paso a paso</Text>
+          {STEPS.map((s, i) => (
+            <View key={s.title} style={styles.stepRow}>
+              <View style={styles.stepNumberCol}>
+                <View style={styles.stepNumber}>
+                  <Text style={styles.stepNumberText}>{i + 1}</Text>
+                </View>
+                {i < STEPS.length - 1 && <View style={styles.stepLine} />}
+              </View>
+              <View style={styles.stepTextCol}>
+                <Text style={styles.stepTitle}>{s.title}</Text>
+                <Text style={styles.stepDesc}>{s.desc}</Text>
+              </View>
+            </View>
+          ))}
+        </Card>
+
+        {/* Mockup ilustrativo de la cámara */}
+        <View style={[styles.mockup, shadow.card]}>
+          <CameraGuide width={320} height={180} color={palette.teal} />
+          <View style={styles.mockupBadge}>
+            <Ionicons name="scan-outline" size={16} color={palette.white} />
+            <Text style={styles.mockupBadgeText}>Alineá tus dientes aquí</Text>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* CTA fijo */}
+      <View style={[styles.ctaBar, { paddingBottom: insets.bottom + spacing.md }]}>
+        <Button
+          label="Entendido, Abrir Cámara"
+          left={<Ionicons name="camera" size={20} color={palette.white} />}
+          onPress={() => router.push('/analysis/camera')}
+        />
+      </View>
+    </SafeAreaView>
+  );
+}
+
+function RuleCard({ icon, title, desc, negative }: Rule) {
+  return (
+    <Card
+      flat
+      style={[styles.ruleCard, shadow.card, negative && styles.ruleCardNegative]}
+      padded="lg">
+      <View style={[styles.ruleIcon, { backgroundColor: negative ? palette.dangerSoft : palette.tealSoft }]}>
+        {icon}
+      </View>
+      <Text style={styles.ruleTitle}>{title}</Text>
+      <Text style={styles.ruleDesc}>{desc}</Text>
+      <Ionicons
+        name={negative ? 'close-circle' : 'checkmark-circle'}
+        size={22}
+        color={negative ? palette.danger : palette.success}
+        style={styles.ruleStatus}
+      />
+    </Card>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: palette.background },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  back: { padding: spacing.xs },
+  headerTitle: { ...typography.h2, fontSize: 20, color: palette.primary, fontWeight: '700' },
+  content: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
+  intro: {
+    ...typography.body,
+    color: palette.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+
+  rulesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  ruleCard: {
+    flexBasis: '47.5%',
+    flexGrow: 1,
+    alignItems: 'center',
+  },
+  ruleCardNegative: { borderColor: palette.dangerSoft, backgroundColor: '#FFF8F8' },
+  ruleIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  ruleTitle: { ...typography.bodyStrong, color: palette.textPrimary, textAlign: 'center' },
+  ruleDesc: {
+    ...typography.small,
+    color: palette.textSecondary,
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: spacing.md,
+  },
+  ruleStatus: { marginTop: 'auto' },
+
+  guideCard: { marginTop: spacing.xl },
+  guideTitle: { ...typography.h2, fontSize: 20, color: palette.textPrimary, marginBottom: spacing.lg },
+  stepRow: { flexDirection: 'row', gap: spacing.md },
+  stepNumberCol: { alignItems: 'center', width: 28 },
+  stepNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: palette.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepNumberText: { ...typography.caption, color: palette.white, fontWeight: '700' },
+  stepLine: { flex: 1, width: 2, backgroundColor: palette.primaryLight, marginVertical: 4 },
+  stepTextCol: { flex: 1, paddingBottom: spacing.lg },
+  stepTitle: { ...typography.bodyStrong, color: palette.textPrimary },
+  stepDesc: { ...typography.caption, color: palette.textSecondary, marginTop: 2 },
+
+  mockup: {
+    marginTop: spacing.xl,
+    height: 180,
+    borderRadius: radius.lg,
+    backgroundColor: '#1E293B',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mockupBadge: {
+    position: 'absolute',
+    bottom: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  mockupBadgeText: { ...typography.caption, color: palette.white, fontWeight: '600' },
+
+  ctaBar: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    backgroundColor: palette.background,
+    borderTopWidth: 1,
+    borderTopColor: palette.border,
+  },
+});
