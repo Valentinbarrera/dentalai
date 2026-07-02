@@ -1,10 +1,12 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BrandBand } from '@/components/ui/brand-band';
 import { PressableCard } from '@/components/ui/pressable-card';
 import { Reveal } from '@/components/ui/reveal';
 import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
@@ -17,19 +19,24 @@ export default function SpecialistsScreen() {
   const [filter, setFilter] = useState('Todos');
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Especialistas</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Filtros"
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}>
-          <Ionicons name="options-outline" size={20} color={palette.primary} />
-        </Pressable>
-      </View>
-
+    <SafeAreaView style={styles.safe} edges={[]}>
+      <StatusBar style="light" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <BrandBand
+          title="Especialistas"
+          subtitle="Encontrá tu profesional ideal"
+          right={
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Filtros"
+              hitSlop={8}
+              style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}>
+              <Ionicons name="options-outline" size={20} color={palette.white} />
+            </Pressable>
+          }
+        />
+
+        <View style={styles.inner}>
         {/* Búsqueda */}
         <Reveal index={0} style={styles.searchRow}>
           <View style={styles.searchInput}>
@@ -83,6 +90,7 @@ export default function SpecialistsScreen() {
             <SpecialistCard key={s.id} s={s} onSelect={() => router.push(`/booking/specialist?id=${s.id}`)} />
           ))}
         </Reveal>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -148,24 +156,17 @@ function SpecialistCard({ s, onSelect }: { s: Specialist; onSelect: () => void }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  headerTitle: { ...typography.h2, color: palette.textPrimary },
   iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: palette.primaryLight,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconBtnPressed: { opacity: 0.7 },
-  content: { paddingHorizontal: spacing.xl, paddingBottom: CONTENT_BOTTOM_INSET },
+  iconBtnPressed: { opacity: 0.6, backgroundColor: 'rgba(255,255,255,0.32)' },
+  content: { paddingBottom: CONTENT_BOTTOM_INSET },
+  inner: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm },
 
   searchRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
   searchInput: {

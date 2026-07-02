@@ -1,14 +1,17 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Badge } from '@/components/ui/badge';
+import { BrandBand } from '@/components/ui/brand-band';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { GradientIcon } from '@/components/ui/gradient-icon';
 import { PressableCard } from '@/components/ui/pressable-card';
 import { Reveal } from '@/components/ui/reveal';
+import { ScreenContainer } from '@/components/ui/screen-container';
 import { palette, radius, shadow, spacing, typography } from '@/theme/tokens';
 
 type Appt = {
@@ -55,27 +58,25 @@ export default function PortalScreen() {
   const router = useRouter();
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Volver"
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}>
-          <Ionicons name="arrow-back" size={22} color={palette.primary} />
-        </Pressable>
-        <Text style={styles.logo}>DentalAI</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Notificaciones"
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}>
-          <Ionicons name="notifications-outline" size={20} color={palette.primary} />
-          <View style={styles.notifDot} />
-        </Pressable>
-      </View>
+    <ScreenContainer scroll padded={false} edges={[]} background={palette.background}>
+      <StatusBar style="light" />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <BrandBand
+        title="DentalAI"
+        subtitle="Portal del profesional"
+        right={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Notificaciones"
+            hitSlop={8}
+            style={({ pressed }) => [styles.bellGlass, pressed && styles.bellPressed]}>
+            <Ionicons name="notifications-outline" size={22} color={palette.white} />
+            <View style={styles.bellDot} />
+          </Pressable>
+        }
+      />
+
+      <View style={styles.body}>
         {/* Saludo + CTA */}
         <Reveal index={0}>
           <Text style={styles.greeting}>Buen día, Dr. Smith</Text>
@@ -97,9 +98,9 @@ export default function PortalScreen() {
             onPress={() => router.push('/portal-credentials')}
             accessibilityLabel="Completá tus credenciales profesionales"
             style={styles.credCard}>
-            <View style={styles.credIcon}>
-              <MaterialCommunityIcons name="certificate-outline" size={22} color={palette.primary} />
-            </View>
+            <GradientIcon gradient={[palette.primary, palette.navy]} size={44}>
+              <MaterialCommunityIcons name="certificate-outline" size={22} color={palette.white} />
+            </GradientIcon>
             <View style={styles.credFlex}>
               <Text style={styles.credTitle}>Completá tus credenciales</Text>
               <Text style={styles.credSub}>Cargá tu título y matrícula para verificar tu perfil.</Text>
@@ -111,8 +112,8 @@ export default function PortalScreen() {
         {/* Métricas */}
         <Reveal index={2}>
           <View style={styles.metricsRow}>
-            <MetricCard icon="calendar-outline" label="Turnos hoy" value="14" delta="12%" progress={0.75} tone={palette.primary} />
-            <MetricCard icon="clipboard-outline" label="Turnos semana" value="68" delta="5%" progress={0.6} tone={palette.teal} />
+            <MetricCard icon="calendar-outline" label="Turnos hoy" value="14" delta="12%" progress={0.75} tone={palette.primary} gradient={[palette.teal, palette.primary]} />
+            <MetricCard icon="clipboard-outline" label="Turnos semana" value="68" delta="5%" progress={0.6} tone={palette.teal} gradient={[palette.primary, palette.navy]} />
           </View>
         </Reveal>
 
@@ -136,7 +137,10 @@ export default function PortalScreen() {
         {/* Agenda de hoy */}
         <Reveal index={4}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Agenda de Hoy</Text>
+            <View style={styles.headingRow}>
+              <View style={styles.accentBar} />
+              <Text style={styles.sectionTitle}>Agenda de Hoy</Text>
+            </View>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Ver calendario completo"
@@ -176,7 +180,10 @@ export default function PortalScreen() {
         {/* Pacientes recientes */}
         <Reveal index={5}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Pacientes Recientes</Text>
+            <View style={styles.headingRow}>
+              <View style={styles.accentBar} />
+              <Text style={styles.sectionTitle}>Pacientes Recientes</Text>
+            </View>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Buscar pacientes"
@@ -217,8 +224,8 @@ export default function PortalScreen() {
             )}
           </Card>
         </Reveal>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </ScreenContainer>
   );
 }
 
@@ -229,6 +236,7 @@ function MetricCard({
   delta,
   progress,
   tone,
+  gradient,
 }: {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   label: string;
@@ -236,13 +244,14 @@ function MetricCard({
   delta: string;
   progress: number;
   tone: string;
+  gradient: readonly [string, string];
 }) {
   return (
     <Card style={styles.metric}>
       <View style={styles.metricTop}>
-        <View style={styles.metricIcon}>
-          <Ionicons name={icon} size={22} color={palette.primary} />
-        </View>
+        <GradientIcon gradient={gradient} size={40}>
+          <Ionicons name={icon} size={22} color={palette.white} />
+        </GradientIcon>
         <View style={styles.deltaBadge}>
           <Ionicons name="trending-up" size={13} color={palette.success} />
           <Text style={styles.deltaText}>{delta}</Text>
@@ -318,58 +327,44 @@ function ScheduleItem({ appt }: { appt: Appt }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: palette.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: palette.primaryLight,
+  body: { paddingHorizontal: spacing.xl },
+
+  bellGlass: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconBtnPressed: { opacity: 0.7, transform: [{ scale: 0.96 }] },
-  notifDot: {
+  bellPressed: { opacity: 0.6, backgroundColor: 'rgba(255,255,255,0.32)' },
+  bellDot: {
     position: 'absolute',
-    top: 9,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: palette.danger,
+    top: 11,
+    right: 12,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: '#F87171',
     borderWidth: 1.5,
-    borderColor: palette.primaryLight,
+    borderColor: palette.primary,
   },
-  logo: { ...typography.h2, fontSize: 20, color: palette.primary, fontWeight: '800' },
-  content: { paddingHorizontal: spacing.xl, paddingBottom: spacing['3xl'] },
 
-  greeting: { ...typography.h1, color: palette.textPrimary, marginTop: spacing.sm },
+  headingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  accentBar: { width: 4, height: 18, borderRadius: radius.pill, backgroundColor: palette.teal },
+
+  greeting: { ...typography.h1, color: palette.textPrimary, marginTop: spacing.xl },
   subGreeting: { ...typography.body, color: palette.textSecondary, marginTop: spacing.xs },
   newBtn: { marginTop: spacing.lg, alignSelf: 'flex-start' },
 
   credCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.lg },
   credFlex: { flex: 1 },
-  credIcon: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
   credTitle: { ...typography.bodyStrong, color: palette.textPrimary },
   credSub: { ...typography.caption, color: palette.textSecondary, marginTop: 2 },
 
   metricsRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
   metric: { flex: 1 },
   metricTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  metricIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: palette.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   deltaBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -418,6 +413,7 @@ const styles = StyleSheet.create({
   sectionTitle: { ...typography.h2, fontSize: 20, color: palette.textPrimary },
   link: { ...typography.bodyStrong, color: palette.primary },
   linkPressed: { opacity: 0.6 },
+  iconBtnPressed: { opacity: 0.7, transform: [{ scale: 0.96 }] },
   searchBtn: {
     width: 36,
     height: 36,

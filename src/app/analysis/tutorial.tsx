@@ -1,11 +1,14 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CameraGuide } from '@/components/analysis/camera-guide';
+import { BrandBand } from '@/components/ui/brand-band';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { GradientIcon } from '@/components/ui/gradient-icon';
 import { Reveal } from '@/components/ui/reveal';
 import { palette, radius, shadow, spacing, typography } from '@/theme/tokens';
 
@@ -53,19 +56,14 @@ export default function TutorialScreen() {
   const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Volver"
-          hitSlop={8}
-          style={({ pressed }) => [styles.back, pressed && styles.backPressed]}>
-          <Ionicons name="arrow-back" size={24} color={palette.primary} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Instrucciones de Análisis</Text>
-      </View>
+    <SafeAreaView style={styles.safe} edges={[]}>
+      <StatusBar style="light" />
+
+      <BrandBand
+        title="Instrucciones de Análisis"
+        subtitle="3 fotos + un video corto para tu modelo 3D"
+        onBack={() => router.back()}
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <Reveal index={0}>
@@ -87,13 +85,16 @@ export default function TutorialScreen() {
         {/* Guía paso a paso */}
         <Reveal index={2}>
           <Card style={styles.guideCard}>
-            <Text style={styles.guideTitle}>Guía paso a paso</Text>
+            <View style={styles.guideHeadingRow}>
+              <View style={styles.accentBar} />
+              <Text style={styles.guideTitle}>Guía paso a paso</Text>
+            </View>
             {STEPS.map((s, i) => (
               <View key={s.title} style={styles.stepRow}>
                 <View style={styles.stepNumberCol}>
-                  <View style={styles.stepNumber}>
+                  <GradientIcon gradient={[palette.primary, palette.navy]} size={28} borderRadius={14}>
                     <Text style={styles.stepNumberText}>{i + 1}</Text>
-                  </View>
+                  </GradientIcon>
                   {i < STEPS.length - 1 && <View style={styles.stepLine} />}
                 </View>
                 <View style={styles.stepTextCol}>
@@ -152,27 +153,16 @@ function RuleCard({ icon, title, desc, negative }: Rule) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  back: {
-    padding: spacing.xs,
-    borderRadius: radius.pill,
-  },
-  backPressed: { opacity: 0.6, backgroundColor: palette.primarySoft },
-  headerTitle: { ...typography.h2, fontSize: 20, color: palette.primary, fontWeight: '700' },
   content: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
   intro: {
     ...typography.body,
     color: palette.textSecondary,
     textAlign: 'center',
-    marginTop: spacing.sm,
+    marginTop: spacing.lg,
     marginBottom: spacing.xl,
   },
+
+  accentBar: { width: 4, height: 18, borderRadius: radius.pill, backgroundColor: palette.teal },
 
   rulesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   ruleCard: {
@@ -200,17 +190,10 @@ const styles = StyleSheet.create({
   ruleStatus: { marginTop: 'auto' },
 
   guideCard: { marginTop: spacing.xl },
-  guideTitle: { ...typography.h2, fontSize: 20, color: palette.textPrimary, marginBottom: spacing.lg },
+  guideHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg },
+  guideTitle: { ...typography.h2, fontSize: 20, color: palette.textPrimary },
   stepRow: { flexDirection: 'row', gap: spacing.md },
   stepNumberCol: { alignItems: 'center', width: 28 },
-  stepNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: palette.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   stepNumberText: { ...typography.caption, color: palette.white, fontWeight: '700' },
   stepLine: { flex: 1, width: 2, backgroundColor: palette.primaryLight, marginVertical: 4 },
   stepTextCol: { flex: 1, paddingBottom: spacing.lg },

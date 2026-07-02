@@ -1,10 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BrandBand } from '@/components/ui/brand-band';
 import { Button } from '@/components/ui/button';
+import { GradientIcon } from '@/components/ui/gradient-icon';
 import { PressableCard } from '@/components/ui/pressable-card';
 import { Reveal } from '@/components/ui/reveal';
 import { CALENDAR_DAYS, TIME_SLOTS, TimeSlot } from '@/lib/specialists';
@@ -21,35 +24,18 @@ export default function AgendaScreen() {
   const afternoon = TIME_SLOTS.filter((s) => s.period === 'afternoon');
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Volver"
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}>
-          <Ionicons name="arrow-back" size={22} color={palette.primary} />
-        </Pressable>
-        <Text style={styles.logo}>DentalAI</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Notificaciones"
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}>
-          <Ionicons name="notifications-outline" size={20} color={palette.primary} />
-        </Pressable>
-      </View>
+    <SafeAreaView style={styles.safe} edges={[]}>
+      <StatusBar style="light" />
+      {/* Header de marca */}
+      <BrandBand
+        onBack={() => router.back()}
+        title="Reservar Turno"
+        subtitle="Elegí la fecha y el horario para tu consulta del análisis IA."
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Reveal index={0}>
-          <Text style={styles.title}>Reservar Turno</Text>
-          <Text style={styles.subtitle}>
-            Seleccioná la fecha y el horario para tu consulta del análisis IA.
-          </Text>
-        </Reveal>
-
         {/* Selector de mes */}
-        <Reveal index={1}>
+        <Reveal index={0}>
           <View style={styles.monthBar}>
             <Pressable
               accessibilityRole="button"
@@ -90,9 +76,12 @@ export default function AgendaScreen() {
         </Reveal>
 
         {/* Horarios */}
-        <Reveal index={2}>
+        <Reveal index={1}>
           <View style={styles.slotsHeader}>
-            <Ionicons name="time-outline" size={18} color={palette.primary} />
+            <View style={styles.accentBar} />
+            <GradientIcon gradient={[palette.teal, palette.primary]} size={32} borderRadius={radius.sm}>
+              <Ionicons name="time-outline" size={18} color={palette.white} />
+            </GradientIcon>
             <Text style={styles.slotsHeaderText}>Horarios Disponibles</Text>
           </View>
 
@@ -160,27 +149,9 @@ function SlotButton({ slot, selected, onPress }: { slot: TimeSlot; selected: boo
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: palette.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconBtnPressed: { opacity: 0.7, transform: [{ scale: 0.94 }] },
-  logo: { ...typography.h2, fontSize: 20, color: palette.primary, fontWeight: '800' },
-  content: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
+  content: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl, paddingTop: spacing.xl },
 
-  title: { ...typography.h1, fontSize: 26, color: palette.textPrimary, marginTop: spacing.sm },
-  subtitle: { ...typography.body, color: palette.textSecondary, marginTop: spacing.xs },
+  accentBar: { width: 4, height: 18, borderRadius: radius.pill, backgroundColor: palette.teal },
 
   monthBar: {
     flexDirection: 'row',
@@ -191,7 +162,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.border,
     padding: spacing.md,
-    marginTop: spacing.xl,
   },
   monthArrow: { padding: spacing.sm, borderRadius: radius.sm },
   monthArrowPressed: { opacity: 0.6, backgroundColor: palette.surfaceAlt },

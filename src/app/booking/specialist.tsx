@@ -1,12 +1,14 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BrandBand } from '@/components/ui/brand-band';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { GradientIcon } from '@/components/ui/gradient-icon';
 import { PressableCard } from '@/components/ui/pressable-card';
 import { Reveal } from '@/components/ui/reveal';
 import { getSpecialist, QUICK_SLOTS, REVIEWS, Review } from '@/lib/specialists';
@@ -22,54 +24,54 @@ export default function SpecialistProfileScreen() {
 
   return (
     <View style={styles.root}>
+      <StatusBar style="light" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-        {/* Foto header */}
-        <LinearGradient colors={[palette.primary, palette.teal]} style={styles.photo}>
-          <Ionicons name="person" size={96} color="rgba(255,255,255,0.85)" />
-        </LinearGradient>
-
-        {/* Botones overlay */}
-        <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
-          <Pressable
-            onPress={() => router.back()}
-            accessibilityRole="button"
-            accessibilityLabel="Volver"
-            style={({ pressed }) => [styles.roundBtn, pressed && styles.roundBtnPressed]}>
-            <Ionicons name="arrow-back" size={22} color={palette.primary} />
-          </Pressable>
-          <View style={styles.topRight}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Agregar a favoritos"
-              style={({ pressed }) => [styles.roundBtn, pressed && styles.roundBtnPressed]}>
-              <Ionicons name="heart-outline" size={20} color={palette.danger} />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Compartir perfil"
-              style={({ pressed }) => [styles.roundBtn, pressed && styles.roundBtnPressed]}>
-              <Ionicons name="share-social-outline" size={20} color={palette.primary} />
-            </Pressable>
+        {/* Header de marca */}
+        <BrandBand
+          onBack={() => router.back()}
+          title={s.name}
+          subtitle={`Especialista en ${s.specialty.split(' ')[0]}`}
+          right={
+            <View style={styles.headerActions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Agregar a favoritos"
+                hitSlop={8}
+                style={({ pressed }) => [styles.glassBtn, pressed && styles.glassBtnPressed]}>
+                <Ionicons name="heart-outline" size={20} color={palette.white} />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Compartir perfil"
+                hitSlop={8}
+                style={({ pressed }) => [styles.glassBtn, pressed && styles.glassBtnPressed]}>
+                <Ionicons name="share-social-outline" size={20} color={palette.white} />
+              </Pressable>
+            </View>
+          }>
+          <View style={styles.heroChips}>
+            <View style={styles.heroChip}>
+              <Ionicons name="star" size={13} color={palette.warning} />
+              <Text style={styles.heroChipText}>
+                {s.rating.toFixed(1)} ({s.reviews})
+              </Text>
+            </View>
+            <View style={styles.heroChip}>
+              <Ionicons name="location-outline" size={13} color={palette.white} />
+              <Text style={styles.heroChipText}>{s.distanceKm} km · {s.clinic}</Text>
+            </View>
+            {s.online ? (
+              <View style={styles.heroChip}>
+                <View style={styles.onlineDot} />
+                <Text style={styles.heroChipText}>En línea</Text>
+              </View>
+            ) : null}
           </View>
-        </View>
+        </BrandBand>
 
         <View style={styles.body}>
-          {/* Nombre + rating */}
+          {/* Tags */}
           <Reveal index={0}>
-            <View style={styles.nameRow}>
-              <View style={styles.flex}>
-                <Text style={styles.name}>{s.name}</Text>
-                <Text style={styles.specialty}>Especialista en {s.specialty.split(' ')[0]}</Text>
-              </View>
-              <View style={styles.ratingBadge}>
-                <Ionicons name="star" size={14} color={palette.warning} />
-                <Text style={styles.ratingText}>
-                  {s.rating.toFixed(1)} ({s.reviews})
-                </Text>
-              </View>
-            </View>
-
-            {/* Tags */}
             <View style={styles.tags}>
               {s.tags.map((t) => (
                 <View key={t} style={styles.tag}>
@@ -82,24 +84,30 @@ export default function SpecialistProfileScreen() {
           {/* Stats */}
           <Reveal index={1}>
             <Card style={styles.statsCard} flat>
-              <Stat icon="briefcase-outline" value={`${s.experienceYears} Años`} label="Experiencia" />
+              <Stat icon="briefcase-outline" value={`${s.experienceYears} Años`} label="Experiencia" gradient={[palette.teal, palette.primary]} />
               <View style={styles.statDivider} />
-              <Stat icon="school-outline" value={s.university} label="Egresada" />
+              <Stat icon="school-outline" value={s.university} label="Egresada" gradient={[palette.primary, palette.navy]} />
               <View style={styles.statDivider} />
-              <Stat icon="people-outline" value={s.patients} label="Pacientes" />
+              <Stat icon="people-outline" value={s.patients} label="Pacientes" gradient={[palette.teal, palette.tealDark]} />
             </Card>
           </Reveal>
 
           {/* Sobre mí */}
           <Reveal index={2}>
-            <Text style={styles.sectionTitle}>Sobre mí</Text>
+            <View style={styles.headingRow}>
+              <View style={styles.accentBar} />
+              <Text style={styles.sectionTitle}>Sobre mí</Text>
+            </View>
             <Text style={styles.about}>{s.about}</Text>
           </Reveal>
 
           {/* Reseñas */}
           <Reveal index={3}>
             <View style={styles.reviewsHeader}>
-              <Text style={styles.sectionTitle}>Reseñas</Text>
+              <View style={styles.headingRow}>
+                <View style={styles.accentBar} />
+                <Text style={styles.sectionTitle}>Reseñas</Text>
+              </View>
               <Pressable accessibilityRole="button" accessibilityLabel="Ver todas las reseñas">
                 <Text style={styles.link}>Ver todas</Text>
               </Pressable>
@@ -120,7 +128,10 @@ export default function SpecialistProfileScreen() {
 
           {/* Horarios */}
           <Reveal index={4}>
-            <Text style={styles.sectionTitle}>Horarios Disponibles</Text>
+            <View style={styles.headingRow}>
+              <View style={styles.accentBar} />
+              <Text style={styles.sectionTitle}>Horarios Disponibles</Text>
+            </View>
             <Text style={styles.weekLabel}>Próxima semana</Text>
             <View style={styles.slotsRow}>
               {QUICK_SLOTS.map((q) => {
@@ -168,16 +179,18 @@ function Stat({
   icon,
   value,
   label,
+  gradient,
 }: {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   value: string;
   label: string;
+  gradient: readonly [string, string];
 }) {
   return (
     <View style={styles.stat}>
-      <View style={styles.statIcon}>
-        <Ionicons name={icon} size={20} color={palette.teal} />
-      </View>
+      <GradientIcon gradient={gradient} size={44} borderRadius={22} style={styles.statIcon}>
+        <Ionicons name={icon} size={20} color={palette.white} />
+      </GradientIcon>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
@@ -205,78 +218,52 @@ function ReviewCard({ r }: { r: Review }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.background },
-  flex: { flex: 1 },
-  photo: { height: 240, alignItems: 'center', justifyContent: 'center' },
-  topBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-  },
-  topRight: { flexDirection: 'row', gap: spacing.sm },
-  roundBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+
+  headerActions: { flexDirection: 'row', gap: spacing.sm },
+  glassBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  roundBtnPressed: { opacity: 0.7, transform: [{ scale: 0.94 }] },
+  glassBtnPressed: { opacity: 0.6, backgroundColor: 'rgba(255,255,255,0.32)' },
 
-  body: {
-    backgroundColor: palette.background,
-    borderTopLeftRadius: radius['2xl'],
-    borderTopRightRadius: radius['2xl'],
-    marginTop: -24,
-    paddingTop: spacing['2xl'],
-    paddingHorizontal: spacing.xl,
-  },
-  nameRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
-  name: { ...typography.h1, fontSize: 26, color: palette.textPrimary },
-  specialty: { ...typography.body, color: palette.textSecondary, marginTop: 2 },
-  ratingBadge: {
+  heroChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.lg },
+  heroChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: palette.surface,
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: palette.border,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
-    marginTop: 4,
   },
-  ratingText: { ...typography.caption, color: palette.textPrimary, fontWeight: '700' },
+  heroChipText: { ...typography.caption, color: palette.white, fontWeight: '700' },
+  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: palette.tealLight },
 
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.lg },
+  body: { paddingHorizontal: spacing.xl, paddingTop: spacing.xl },
+
+  headingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing['2xl'] },
+  accentBar: { width: 4, height: 18, borderRadius: radius.pill, backgroundColor: palette.teal },
+
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   tag: { backgroundColor: palette.primarySoft, borderRadius: radius.sm, paddingHorizontal: spacing.md, paddingVertical: 6 },
   tagText: { ...typography.caption, color: palette.primary, fontWeight: '600' },
 
   statsCard: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.xl },
   stat: { flex: 1, alignItems: 'center', gap: 4 },
-  statIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: palette.tealSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
+  statIcon: { marginBottom: 4 },
   statValue: { ...typography.subtitle, color: palette.textPrimary },
   statLabel: { ...typography.caption, color: palette.textSecondary },
   statDivider: { width: 1, height: 48, backgroundColor: palette.border },
 
-  sectionTitle: { ...typography.h2, fontSize: 20, color: palette.textPrimary, marginTop: spacing['2xl'] },
+  sectionTitle: { ...typography.h2, fontSize: 20, color: palette.textPrimary },
   about: { ...typography.body, color: palette.textSecondary, marginTop: spacing.md },
 
-  reviewsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  link: { ...typography.bodyStrong, color: palette.primary, marginTop: spacing['2xl'] },
+  reviewsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing['2xl'] },
+  link: { ...typography.bodyStrong, color: palette.primary },
   reviewsRow: { gap: spacing.md, marginTop: spacing.md, paddingRight: spacing.xl },
   reviewCard: { width: 260 },
   reviewHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

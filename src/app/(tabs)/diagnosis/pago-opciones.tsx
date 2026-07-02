@@ -1,9 +1,10 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrandHeader } from '@/components/ui/brand-header';
+import { BrandBand } from '@/components/ui/brand-band';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Reveal } from '@/components/ui/reveal';
@@ -15,23 +16,34 @@ export default function PagoOpcionesScreen() {
   const router = useRouter();
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <BrandHeader />
+    <SafeAreaView style={styles.safe} edges={[]}>
+      <StatusBar style="light" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Reveal index={0}>
-          <View style={styles.eyebrowRow}>
-            <MaterialCommunityIcons name="cash-multiple" size={16} color={palette.primary} />
-            <Text style={styles.eyebrow}>MÉTODOS DE PAGO</Text>
-          </View>
-          <Text style={styles.title}>Opciones de Pago</Text>
-          <Text style={styles.subtitle}>Elegí cómo querés pagar tu tratamiento dental seleccionado.</Text>
-        </Reveal>
+        <BrandBand
+          title="Opciones de Pago"
+          subtitle="Métodos de pago"
+          onBack={() => router.back()}
+        />
 
-        {PAYMENT_PLANS.map((p, i) => (
-          <Reveal key={p.id} index={i + 1}>
-            <PlanCard plan={p} onPress={() => router.push('/booking/agenda')} />
+        <View style={styles.body}>
+          <Reveal index={0}>
+            <View style={styles.intro}>
+              <View style={styles.eyebrowRow}>
+                <MaterialCommunityIcons name="cash-multiple" size={16} color={palette.primary} />
+                <Text style={styles.eyebrow}>MÉTODOS DE PAGO</Text>
+              </View>
+              <Text style={styles.subtitle}>
+                Elegí cómo querés pagar tu tratamiento dental seleccionado.
+              </Text>
+            </View>
           </Reveal>
-        ))}
+
+          {PAYMENT_PLANS.map((p, i) => (
+            <Reveal key={p.id} index={i + 1}>
+              <PlanCard plan={p} onPress={() => router.push('/booking/agenda')} />
+            </Reveal>
+          ))}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -41,6 +53,7 @@ function PlanCard({ plan, onPress }: { plan: PaymentPlan; onPress: () => void })
   return (
     <Card style={styles.card}>
       <View style={styles.cardHead}>
+        <View style={styles.accentBar} />
         <Text style={styles.cardTitle}>{plan.title}</Text>
         {plan.highlight && (
           <View style={styles.discountBadge}>
@@ -98,12 +111,15 @@ function SliderVisual({ progress = 0.4 }: { progress?: number }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.background },
-  content: { paddingHorizontal: spacing.xl, paddingBottom: CONTENT_BOTTOM_INSET },
+  content: { paddingBottom: CONTENT_BOTTOM_INSET },
+  body: { paddingHorizontal: spacing.xl },
 
-  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.sm },
+  intro: { marginTop: spacing.lg },
+  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   eyebrow: { ...typography.label, color: palette.primary },
-  title: { ...typography.h1, color: palette.textPrimary, marginTop: spacing.sm },
   subtitle: { ...typography.body, color: palette.textSecondary, marginTop: spacing.xs },
+
+  accentBar: { width: 4, height: 18, borderRadius: radius.pill, backgroundColor: palette.teal },
 
   card: { marginTop: spacing.lg },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

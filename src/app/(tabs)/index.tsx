@@ -5,13 +5,13 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle as SvgCircle, Defs, Pattern, Rect } from 'react-native-svg';
 
 import { Badge } from '@/components/ui/badge';
 import { PressableCard } from '@/components/ui/pressable-card';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { Reveal } from '@/components/ui/reveal';
 import { ScreenContainer } from '@/components/ui/screen-container';
+import { TextureGrid } from '@/components/ui/texture-grid';
 import { palette, radius, shadow, spacing, typography } from '@/theme/tokens';
 
 type MciName = keyof typeof MaterialCommunityIcons.glyphMap;
@@ -253,20 +253,6 @@ export default function HomeScreen() {
 }
 
 /* ---------------- Sub-componentes locales ---------------- */
-
-/** Textura de puntos sutil para superficies con gradiente de marca. */
-function TextureGrid() {
-  return (
-    <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Defs>
-        <Pattern id="dots" width={22} height={22} patternUnits="userSpaceOnUse">
-          <SvgCircle cx={2} cy={2} r={1.4} fill="rgba(255,255,255,0.55)" />
-        </Pattern>
-      </Defs>
-      <Rect width="100%" height="100%" fill="url(#dots)" opacity={0.1} />
-    </Svg>
-  );
-}
 
 /** Mascota DENTA con glow que respira, sobre la banda de marca. */
 function HeroMascot() {

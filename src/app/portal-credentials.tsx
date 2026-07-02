@@ -2,13 +2,16 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Badge } from '@/components/ui/badge';
+import { BrandBand } from '@/components/ui/brand-band';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { GradientIcon } from '@/components/ui/gradient-icon';
 import { Reveal } from '@/components/ui/reveal';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
@@ -36,24 +39,16 @@ export default function CredentialsScreen() {
   const complete = !!diploma && !!matricula;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Volver"
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}>
-          <Ionicons name="arrow-back" size={22} color={palette.primary} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Credenciales Profesionales</Text>
-        <View style={styles.iconBtn} />
-      </View>
+    <SafeAreaView style={styles.safe} edges={[]}>
+      <StatusBar style="light" />
+
+      <BrandBand title="Credenciales Profesionales" onBack={() => router.back()} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* Profesional */}
         <Reveal index={0}>
           <Card style={styles.proCard}>
-            <LinearGradient colors={[palette.primary, palette.teal]} style={styles.avatar}>
+            <LinearGradient colors={[palette.primary, palette.teal]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
               <MaterialCommunityIcons name="stethoscope" size={26} color={palette.white} />
             </LinearGradient>
             <View style={styles.flex}>
@@ -77,7 +72,7 @@ export default function CredentialsScreen() {
 
         {/* Título */}
         <Reveal index={2}>
-          <Text style={styles.sectionLabel}>Título Universitario</Text>
+          <SectionLabel>Título Universitario</SectionLabel>
           {diploma ? (
             <View>
               <Image source={{ uri: diploma }} style={styles.diplomaImg} resizeMode="cover" />
@@ -95,9 +90,9 @@ export default function CredentialsScreen() {
             </View>
           ) : (
             <View style={styles.uploadBox}>
-              <View style={styles.uploadIcon}>
-                <Ionicons name="cloud-upload-outline" size={32} color={palette.primary} />
-              </View>
+              <GradientIcon gradient={[palette.teal, palette.primary]} size={60} borderRadius={30}>
+                <Ionicons name="cloud-upload-outline" size={32} color={palette.white} />
+              </GradientIcon>
               <Text style={styles.uploadHint}>Subí una foto o escaneo de tu diploma</Text>
               <View style={styles.uploadBtns}>
                 <Pressable
@@ -123,7 +118,7 @@ export default function CredentialsScreen() {
 
         {/* Datos */}
         <Reveal index={3}>
-          <Text style={styles.sectionLabel}>Número de Matrícula</Text>
+          <SectionLabel>Número de Matrícula</SectionLabel>
           <View style={styles.inputWrap}>
             <MaterialCommunityIcons name="card-account-details-outline" size={18} color={palette.textMuted} />
             <TextInput
@@ -136,7 +131,7 @@ export default function CredentialsScreen() {
             />
           </View>
 
-          <Text style={styles.sectionLabel}>Universidad</Text>
+          <SectionLabel>Universidad</SectionLabel>
           <View style={styles.inputWrap}>
             <Ionicons name="school-outline" size={18} color={palette.textMuted} />
             <TextInput
@@ -178,6 +173,15 @@ export default function CredentialsScreen() {
   );
 }
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={styles.sectionLabelRow}>
+      <View style={styles.accentBar} />
+      <Text style={styles.sectionLabel}>{children}</Text>
+    </View>
+  );
+}
+
 function StepChip({ label, done }: { label: string; done: boolean }) {
   return (
     <View style={styles.step}>
@@ -196,13 +200,9 @@ function StepChip({ label, done }: { label: string; done: boolean }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.background },
   flex: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: palette.primaryLight, alignItems: 'center', justifyContent: 'center' },
-  iconBtnPressed: { opacity: 0.7, transform: [{ scale: 0.96 }] },
-  headerTitle: { ...typography.subtitle, color: palette.textPrimary },
   content: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
 
-  proCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.sm },
+  proCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.lg },
   avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   proName: { ...typography.subtitle, color: palette.textPrimary },
   proSpecialty: { ...typography.caption, color: palette.textSecondary, marginTop: 2 },
@@ -225,7 +225,9 @@ const styles = StyleSheet.create({
   stepLabelDone: { color: palette.tealDark },
   stepBar: { flex: 1, height: 2, backgroundColor: palette.border, marginHorizontal: spacing.sm, marginBottom: 18 },
 
-  sectionLabel: { ...typography.bodyStrong, color: palette.textPrimary, marginTop: spacing.xl, marginBottom: spacing.md },
+  sectionLabelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xl, marginBottom: spacing.md },
+  accentBar: { width: 4, height: 18, borderRadius: radius.pill, backgroundColor: palette.teal },
+  sectionLabel: { ...typography.bodyStrong, color: palette.textPrimary },
 
   uploadBox: {
     alignItems: 'center',
@@ -237,7 +239,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing['2xl'],
     gap: spacing.md,
   },
-  uploadIcon: { width: 60, height: 60, borderRadius: 30, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
   uploadHint: { ...typography.caption, color: palette.textSecondary },
   uploadBtns: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
   uploadBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: palette.primarySoft, borderRadius: radius.pill, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },

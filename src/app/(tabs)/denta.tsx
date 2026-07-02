@@ -1,14 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/denta/chat-bubble';
 import { Chip } from '@/components/denta/chip';
 import { ConfidenceMeter } from '@/components/denta/confidence-meter';
 import { DentaAvatar } from '@/components/denta/denta-avatar';
-import { BrandHeader } from '@/components/ui/brand-header';
+import { BrandBand } from '@/components/ui/brand-band';
 import { Button } from '@/components/ui/button';
 import { Reveal } from '@/components/ui/reveal';
 import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
@@ -50,8 +51,22 @@ export default function DentaScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <BrandHeader />
+    <SafeAreaView style={styles.safe} edges={[]}>
+      <StatusBar style="light" />
+      <BrandBand
+        title="DentalAI"
+        subtitle="Tu asistente dental virtual"
+        right={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Notificaciones"
+            hitSlop={8}
+            style={({ pressed }) => [styles.bell, pressed && styles.bellPressed]}>
+            <Ionicons name="notifications-outline" size={22} color={palette.white} />
+            <View style={styles.bellDot} />
+          </Pressable>
+        }
+      />
 
       <ScrollView
         ref={scrollRef}
@@ -104,9 +119,29 @@ export default function DentaScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.background },
   flex: { flex: 1 },
+  bell: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellPressed: { opacity: 0.6, backgroundColor: 'rgba(255,255,255,0.32)' },
+  bellDot: {
+    position: 'absolute',
+    top: 11,
+    right: 12,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: '#F87171',
+    borderWidth: 1.5,
+    borderColor: palette.primary,
+  },
   content: {
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.xl,
   },
   hero: { alignItems: 'center', marginTop: spacing['2xl'] },

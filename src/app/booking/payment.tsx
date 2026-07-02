@@ -1,12 +1,14 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrandHeader } from '@/components/ui/brand-header';
+import { BrandBand } from '@/components/ui/brand-band';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { GradientIcon } from '@/components/ui/gradient-icon';
 import { PressableCard } from '@/components/ui/pressable-card';
 import { Reveal } from '@/components/ui/reveal';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
@@ -33,25 +35,26 @@ export default function PaymentScreen() {
   const [method, setMethod] = useState('card');
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <BrandHeader />
+    <SafeAreaView style={styles.safe} edges={[]}>
+      <StatusBar style="light" />
+      <BrandBand
+        onBack={() => router.back()}
+        title="Resumen de Pago"
+        subtitle="Revisá los detalles de tu turno y elegí cómo pagar."
+      />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Reveal index={0}>
-          <Text style={styles.title}>Resumen de Pago</Text>
-          <Text style={styles.subtitle}>
-            Revisá los detalles de tu turno y elegí un método de pago.
-          </Text>
-        </Reveal>
-
         {/* Detalles del turno */}
-        <Reveal index={1}>
+        <Reveal index={0}>
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Detalles del Turno</Text>
+          <View style={styles.headingRow}>
+            <View style={styles.accentBar} />
+            <Text style={styles.cardTitle}>Detalles del Turno</Text>
+          </View>
           <View style={styles.divider} />
           <View style={styles.apptRow}>
-            <View style={styles.apptIcon}>
-              <MaterialCommunityIcons name="tooth" size={22} color={palette.primary} />
-            </View>
+            <GradientIcon gradient={[palette.teal, palette.primary]} size={44} borderRadius={radius.md}>
+              <MaterialCommunityIcons name="tooth" size={22} color={palette.white} />
+            </GradientIcon>
             <View style={styles.flex}>
               <Text style={styles.apptName}>Examen y Limpieza IA Completo</Text>
               <Text style={styles.apptSub}>Dra. Elena Santos • DentalAI Clínica Central</Text>
@@ -71,9 +74,12 @@ export default function PaymentScreen() {
         </Reveal>
 
         {/* Método de pago */}
-        <Reveal index={2}>
+        <Reveal index={1}>
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Método de Pago</Text>
+          <View style={styles.headingRow}>
+            <View style={styles.accentBar} />
+            <Text style={styles.cardTitle}>Método de Pago</Text>
+          </View>
           <View style={styles.methodsGrid}>
             {METHODS.map((m) => {
               const active = m.id === method;
@@ -131,9 +137,12 @@ export default function PaymentScreen() {
         </Reveal>
 
         {/* Resumen de orden */}
-        <Reveal index={3}>
+        <Reveal index={2}>
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Resumen de Orden</Text>
+          <View style={styles.headingRow}>
+            <View style={styles.accentBar} />
+            <Text style={styles.cardTitle}>Resumen de Orden</Text>
+          </View>
           {ORDER.map((o) => (
             <View key={o.label} style={styles.orderRow}>
               <Text style={styles.orderLabel}>{o.label}</Text>
@@ -195,24 +204,16 @@ function Field({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.background },
   flex: { flex: 1 },
-  content: { paddingHorizontal: spacing.xl, paddingBottom: spacing['3xl'] },
+  content: { paddingHorizontal: spacing.xl, paddingBottom: spacing['3xl'], paddingTop: spacing.xl },
 
-  title: { ...typography.h1, color: palette.textPrimary, marginTop: spacing.sm },
-  subtitle: { ...typography.body, color: palette.textSecondary, marginTop: spacing.xs },
+  headingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  accentBar: { width: 4, height: 18, borderRadius: radius.pill, backgroundColor: palette.teal },
 
   card: { marginTop: spacing.lg },
   cardTitle: { ...typography.h2, fontSize: 20, color: palette.textPrimary },
   divider: { height: 1, backgroundColor: palette.border, marginVertical: spacing.md },
 
   apptRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
-  apptIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: palette.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   apptName: { ...typography.subtitle, color: palette.textPrimary },
   apptSub: { ...typography.caption, color: palette.textSecondary, marginTop: 2 },
   apptMetaBox: {

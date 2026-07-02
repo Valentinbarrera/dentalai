@@ -1,13 +1,15 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Badge } from '@/components/ui/badge';
-import { BrandHeader } from '@/components/ui/brand-header';
+import { BrandBand } from '@/components/ui/brand-band';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { GradientIcon } from '@/components/ui/gradient-icon';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { Reveal } from '@/components/ui/reveal';
 import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
@@ -24,101 +26,107 @@ export default function ResultsScreen() {
   const router = useRouter();
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <BrandHeader />
+    <SafeAreaView style={styles.safe} edges={[]}>
+      <StatusBar style="light" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        {/* Encabezado */}
-        <Reveal index={0}>
-          <View style={styles.eyebrowRow}>
-            <MaterialCommunityIcons name="tooth-outline" size={16} color={palette.primary} />
-            <Text style={styles.eyebrow}>ANÁLISIS COMPLETADO</Text>
-          </View>
-          <Text style={styles.title}>Resultados del Escaneo</Text>
-          <Text style={styles.subtitle}>
-            Basado en las imágenes radiográficas subidas el 24 de Octubre.
-          </Text>
-        </Reveal>
+        <BrandBand title="Diagnóstico" subtitle="Resultados del escaneo IA" />
 
-        {/* Diagnóstico principal */}
-        <Reveal index={1}>
-        <Card style={styles.diagCard}>
-          <Badge label="⚠  Atención Requerida" tone="danger" />
-          <Text style={styles.diagLabel}>Diagnóstico preliminar:</Text>
-          <Text style={styles.diagName}>Ausencia de piezas posteriores</Text>
-          <Text style={styles.diagDesc}>
-            El análisis de IA detecta una pérdida significativa de piezas dentales en la zona
-            posterior (molares y premolares), lo que puede comprometer la función masticatoria y la
-            estructura ósea a largo plazo.
-          </Text>
-          <Button
-            label="Ver opciones"
-            left={<Ionicons name="arrow-forward" size={18} color={palette.white} />}
-            onPress={() => router.push('/diagnosis/comparador')}
-            style={styles.diagBtn}
-          />
-          <Button
-            label="Ver imagen original"
-            variant="outline"
-            left={<Ionicons name="image-outline" size={18} color={palette.primary} />}
-            onPress={() => {}}
-          />
-        </Card>
-        </Reveal>
-
-        {/* Nivel de confianza */}
-        <Reveal index={2}>
-          <LinearGradient
-            colors={['#CFF3EC', '#DCEAFE']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.confCard, shadow.card]}>
-            <Text style={styles.confLabel}>NIVEL DE CONFIANZA IA</Text>
-            <ProgressRing value={87} size={140} strokeWidth={12} />
-            <View style={styles.confFooter}>
-              <MaterialCommunityIcons name="shield-check" size={16} color={palette.teal} />
-              <Text style={styles.confFooterText}>Alta precisión estimada</Text>
+        <View style={styles.body}>
+          {/* Encabezado */}
+          <Reveal index={0}>
+            <View style={styles.eyebrowRow}>
+              <MaterialCommunityIcons name="tooth-outline" size={16} color={palette.primary} />
+              <Text style={styles.eyebrow}>ANÁLISIS COMPLETADO</Text>
             </View>
-          </LinearGradient>
-        </Reveal>
+            <Text style={styles.subtitle}>
+              Basado en las imágenes radiográficas subidas el 24 de Octubre.
+            </Text>
+          </Reveal>
 
-        {/* Aviso importante */}
-        <Reveal index={3}>
-          <View style={styles.notice}>
-            <View style={styles.noticeIcon}>
-              <Ionicons name="information" size={16} color={palette.white} />
-            </View>
-            <View style={styles.flex}>
-              <Text style={styles.noticeTitle}>Aviso Importante</Text>
-              <Text style={styles.noticeText}>
-                Este resultado es un análisis preliminar generado por inteligencia artificial y{' '}
-                <Text style={styles.noticeBold}>
-                  debe ser confirmado por un profesional odontológico cualificado
-                </Text>{' '}
-                antes de iniciar cualquier tratamiento.
+          {/* Diagnóstico principal */}
+          <Reveal index={1}>
+            <Card style={styles.diagCard}>
+              <Badge label="⚠  Atención Requerida" tone="danger" />
+              <Text style={styles.diagLabel}>Diagnóstico preliminar:</Text>
+              <Text style={styles.diagName}>Ausencia de piezas posteriores</Text>
+              <Text style={styles.diagDesc}>
+                El análisis de IA detecta una pérdida significativa de piezas dentales en la zona
+                posterior (molares y premolares), lo que puede comprometer la función masticatoria y
+                la estructura ósea a largo plazo.
               </Text>
-            </View>
-          </View>
-        </Reveal>
+              <Button
+                label="Ver opciones"
+                left={<Ionicons name="arrow-forward" size={18} color={palette.white} />}
+                onPress={() => router.push('/diagnosis/comparador')}
+                style={styles.diagBtn}
+              />
+              <Button
+                label="Ver imagen original"
+                variant="outline"
+                left={<Ionicons name="image-outline" size={18} color={palette.primary} />}
+                onPress={() => {}}
+              />
+            </Card>
+          </Reveal>
 
-        {/* Zonas afectadas */}
-        <Reveal index={4}>
-          <Text style={styles.sectionTitle}>Zonas Afectadas</Text>
-          {AFFECTED_ZONES.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.zonesRow}>
-              {AFFECTED_ZONES.map((z) => (
-                <ZoneCard key={z.id} zone={z} />
-              ))}
-            </ScrollView>
-          ) : (
-            <View style={styles.emptyZones}>
-              <MaterialCommunityIcons name="tooth-outline" size={28} color={palette.textMuted} />
-              <Text style={styles.emptyZonesText}>No se detectaron zonas afectadas.</Text>
+          {/* Nivel de confianza */}
+          <Reveal index={2}>
+            <LinearGradient
+              colors={['#CFF3EC', '#DCEAFE']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.confCard, shadow.card]}>
+              <Text style={styles.confLabel}>NIVEL DE CONFIANZA IA</Text>
+              <ProgressRing value={87} size={140} strokeWidth={12} />
+              <View style={styles.confFooter}>
+                <MaterialCommunityIcons name="shield-check" size={16} color={palette.teal} />
+                <Text style={styles.confFooterText}>Alta precisión estimada</Text>
+              </View>
+            </LinearGradient>
+          </Reveal>
+
+          {/* Aviso importante */}
+          <Reveal index={3}>
+            <View style={styles.notice}>
+              <GradientIcon gradient={[palette.primary, palette.navy]} size={28} borderRadius={14}>
+                <Ionicons name="information" size={16} color={palette.white} />
+              </GradientIcon>
+              <View style={styles.flex}>
+                <Text style={styles.noticeTitle}>Aviso Importante</Text>
+                <Text style={styles.noticeText}>
+                  Este resultado es un análisis preliminar generado por inteligencia artificial y{' '}
+                  <Text style={styles.noticeBold}>
+                    debe ser confirmado por un profesional odontológico cualificado
+                  </Text>{' '}
+                  antes de iniciar cualquier tratamiento.
+                </Text>
+              </View>
             </View>
-          )}
-        </Reveal>
+          </Reveal>
+
+          {/* Zonas afectadas */}
+          <Reveal index={4}>
+            <View style={styles.sectionHeaderRow}>
+              <View style={styles.accentBar} />
+              <Text style={styles.sectionTitle}>Zonas Afectadas</Text>
+            </View>
+            {AFFECTED_ZONES.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.zonesRow}>
+                {AFFECTED_ZONES.map((z) => (
+                  <ZoneCard key={z.id} zone={z} />
+                ))}
+              </ScrollView>
+            ) : (
+              <View style={styles.emptyZones}>
+                <MaterialCommunityIcons name="tooth-outline" size={28} color={palette.textMuted} />
+                <Text style={styles.emptyZonesText}>No se detectaron zonas afectadas.</Text>
+              </View>
+            )}
+          </Reveal>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -141,11 +149,13 @@ function ZoneCard({ zone }: { zone: AffectedZone }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.background },
   flex: { flex: 1 },
-  content: { paddingHorizontal: spacing.xl, paddingBottom: CONTENT_BOTTOM_INSET },
+  content: { paddingBottom: CONTENT_BOTTOM_INSET },
+  body: { paddingHorizontal: spacing.xl },
 
-  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.sm },
+  accentBar: { width: 4, height: 18, borderRadius: radius.pill, backgroundColor: palette.teal },
+
+  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.lg },
   eyebrow: { ...typography.label, color: palette.primary },
-  title: { ...typography.h1, color: palette.textPrimary, marginTop: spacing.sm },
   subtitle: { ...typography.body, color: palette.textSecondary, marginTop: spacing.xs },
 
   diagCard: { marginTop: spacing.xl },
@@ -172,19 +182,18 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     marginTop: spacing.lg,
   },
-  noticeIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: palette.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   noticeTitle: { ...typography.bodyStrong, color: palette.textPrimary, marginBottom: 2 },
   noticeText: { ...typography.caption, color: palette.textSecondary, lineHeight: 19 },
   noticeBold: { fontWeight: '700', color: palette.textPrimary },
 
-  sectionTitle: { ...typography.h2, fontSize: 20, color: palette.textPrimary, marginTop: spacing['2xl'], marginBottom: spacing.md },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing['2xl'],
+    marginBottom: spacing.md,
+  },
+  sectionTitle: { ...typography.h2, fontSize: 20, color: palette.textPrimary },
   zonesRow: { gap: spacing.md, paddingRight: spacing.xl },
   zoneCard: { width: 200 },
   zoneTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },

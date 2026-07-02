@@ -1,16 +1,17 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrandHeader } from '@/components/ui/brand-header';
+import { BrandBand } from '@/components/ui/brand-band';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Reveal } from '@/components/ui/reveal';
 import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
 import { TREATMENT_OPTIONS, TreatmentOption } from '@/lib/diagnosis';
-import { palette, radius, shadow, spacing, typography } from '@/theme/tokens';
+import { palette, radius, spacing, typography } from '@/theme/tokens';
 
 const CARD_W = Math.min(Dimensions.get('window').width * 0.82, 340);
 const GAP = 16;
@@ -19,24 +20,26 @@ export default function ComparadorScreen() {
   const router = useRouter();
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <BrandHeader />
+    <SafeAreaView style={styles.safe} edges={[]}>
+      <StatusBar style="light" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <BrandBand
+          title="Comparador"
+          subtitle="Tratamientos según tu diagnóstico IA"
+          onBack={() => router.back()}
+        />
+
         <Reveal index={0}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Volver al diagnóstico"
-            hitSlop={8}
-            style={({ pressed }) => [styles.eyebrowRow, pressed && styles.eyebrowPressed]}
-            onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={16} color={palette.primary} />
-            <Text style={styles.eyebrow}>OPCIONES DE TRATAMIENTO</Text>
-          </Pressable>
-          <Text style={styles.title}>Comparador de{'\n'}Tratamientos</Text>
-          <Text style={styles.subtitle}>
-            Análisis comparativo de opciones reconstructivas basado en tu diagnóstico IA. Evaluá
-            alternativas para tomar la mejor decisión clínica.
-          </Text>
+          <View style={styles.intro}>
+            <View style={styles.headingRow}>
+              <View style={styles.accentBar} />
+              <Text style={styles.sectionTitle}>Elegí una alternativa</Text>
+            </View>
+            <Text style={styles.subtitle}>
+              Análisis comparativo de opciones reconstructivas basado en tu diagnóstico IA. Evaluá
+              alternativas para tomar la mejor decisión clínica.
+            </Text>
+          </View>
         </Reveal>
 
         <Reveal index={1}>
@@ -127,11 +130,11 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.background },
   content: { paddingBottom: CONTENT_BOTTOM_INSET },
 
-  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.sm, paddingHorizontal: spacing.xl, alignSelf: 'flex-start' },
-  eyebrowPressed: { opacity: 0.6 },
-  eyebrow: { ...typography.label, color: palette.primary },
-  title: { ...typography.h1, color: palette.textPrimary, marginTop: spacing.sm, paddingHorizontal: spacing.xl },
-  subtitle: { ...typography.body, color: palette.textSecondary, marginTop: spacing.sm, paddingHorizontal: spacing.xl },
+  intro: { paddingHorizontal: spacing.xl, marginTop: spacing.xl },
+  headingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  accentBar: { width: 4, height: 18, borderRadius: radius.pill, backgroundColor: palette.teal },
+  sectionTitle: { ...typography.h2, fontSize: 20, color: palette.textPrimary },
+  subtitle: { ...typography.body, color: palette.textSecondary, marginTop: spacing.sm },
 
   carousel: { gap: GAP, paddingHorizontal: spacing.xl, paddingTop: spacing.xl },
   card: { width: CARD_W, overflow: 'hidden' },

@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BrandBand } from '@/components/ui/brand-band';
 import { Button } from '@/components/ui/button';
+import { GradientIcon } from '@/components/ui/gradient-icon';
 import { Reveal } from '@/components/ui/reveal';
 import { getSpecialist } from '@/lib/specialists';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
@@ -30,10 +32,11 @@ export default function RateScreen() {
   if (submitted) {
     return (
       <SafeAreaView style={styles.safe}>
+        <StatusBar style="dark" />
         <Reveal index={0} style={styles.thanks}>
-          <View style={styles.thanksIcon}>
+          <GradientIcon gradient={[palette.teal, palette.primary]} size={80} borderRadius={40}>
             <Ionicons name="checkmark" size={40} color={palette.white} />
-          </View>
+          </GradientIcon>
           <Text style={styles.thanksTitle}>¡Gracias por tu reseña!</Text>
           <Text style={styles.thanksText}>
             Tu opinión ayuda a otros pacientes a elegir con confianza.
@@ -45,26 +48,17 @@ export default function RateScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Volver"
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}>
-          <Ionicons name="arrow-back" size={22} color={palette.primary} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Calificar profesional</Text>
-        <View style={styles.iconBtn} />
-      </View>
+    <SafeAreaView style={styles.safe} edges={[]}>
+      <StatusBar style="light" />
+      <BrandBand onBack={() => router.back()} title="Calificar profesional" subtitle={s.name} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* Profesional */}
         <Reveal index={0}>
           <View style={styles.specialist}>
-            <LinearGradient colors={[palette.primary, palette.teal]} style={styles.avatar}>
+            <GradientIcon gradient={[palette.primary, palette.teal]} size={72} borderRadius={36}>
               <Ionicons name="person" size={28} color={palette.white} />
-            </LinearGradient>
+            </GradientIcon>
             <Text style={styles.name}>{s.name}</Text>
             <Text style={styles.specialty}>{s.specialty}</Text>
           </View>
@@ -99,7 +93,10 @@ export default function RateScreen() {
 
         {/* Aspectos */}
         <Reveal index={2}>
-          <Text style={styles.sectionLabel}>¿Qué destacarías?</Text>
+          <View style={styles.headingRow}>
+            <View style={styles.accentBar} />
+            <Text style={styles.sectionLabel}>¿Qué destacarías?</Text>
+          </View>
           <View style={styles.tags}>
             {ASPECTS.map((t) => {
               const active = tags.includes(t);
@@ -120,7 +117,10 @@ export default function RateScreen() {
 
         {/* Comentario */}
         <Reveal index={3}>
-          <Text style={styles.sectionLabel}>Tu comentario (opcional)</Text>
+          <View style={styles.headingRow}>
+            <View style={styles.accentBar} />
+            <Text style={styles.sectionLabel}>Tu comentario (opcional)</Text>
+          </View>
           <TextInput
             value={comment}
             onChangeText={setComment}
@@ -146,20 +146,12 @@ export default function RateScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: palette.primaryLight, alignItems: 'center', justifyContent: 'center' },
-  iconBtnPressed: { opacity: 0.7, transform: [{ scale: 0.94 }] },
-  headerTitle: { ...typography.subtitle, color: palette.textPrimary },
-  content: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
+  content: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl, paddingTop: spacing.xl },
 
-  specialist: { alignItems: 'center', marginTop: spacing.lg },
-  avatar: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
+  headingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing['2xl'], marginBottom: spacing.md },
+  accentBar: { width: 4, height: 18, borderRadius: radius.pill, backgroundColor: palette.teal },
+
+  specialist: { alignItems: 'center', marginTop: spacing.sm },
   name: { ...typography.h2, fontSize: 20, color: palette.textPrimary, marginTop: spacing.md },
   specialty: { ...typography.caption, color: palette.primary, fontWeight: '600', marginTop: 2 },
 
@@ -168,7 +160,7 @@ const styles = StyleSheet.create({
   starPressed: { transform: [{ scale: 1.15 }] },
   ratingLabel: { ...typography.bodyStrong, color: palette.warning, textAlign: 'center', marginTop: spacing.md, minHeight: 22 },
 
-  sectionLabel: { ...typography.bodyStrong, color: palette.textPrimary, marginTop: spacing['2xl'], marginBottom: spacing.md },
+  sectionLabel: { ...typography.bodyStrong, color: palette.textPrimary },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   tag: { borderRadius: radius.pill, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.surface, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   tagActive: { backgroundColor: palette.primarySoft, borderColor: palette.primary },
@@ -191,7 +183,6 @@ const styles = StyleSheet.create({
   ctaBar: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, backgroundColor: palette.background, borderTopWidth: 1, borderTopColor: palette.border },
 
   thanks: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing['3xl'] },
-  thanksIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: palette.success, alignItems: 'center', justifyContent: 'center' },
   thanksTitle: { ...typography.h1, fontSize: 24, color: palette.textPrimary, textAlign: 'center', marginTop: spacing.xl },
   thanksText: { ...typography.body, color: palette.textSecondary, textAlign: 'center', marginTop: spacing.sm },
 });
