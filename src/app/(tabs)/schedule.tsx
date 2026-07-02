@@ -5,7 +5,8 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Card } from '@/components/ui/card';
+import { PressableCard } from '@/components/ui/pressable-card';
+import { Reveal } from '@/components/ui/reveal';
 import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
 import { Specialist, SPECIALISTS, SPECIALTY_FILTERS } from '@/lib/specialists';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
@@ -20,14 +21,17 @@ export default function SpecialistsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Especialistas</Text>
-        <Pressable accessibilityLabel="Filtros" style={styles.iconBtn}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Filtros"
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}>
           <Ionicons name="options-outline" size={20} color={palette.primary} />
         </Pressable>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* Búsqueda */}
-        <View style={styles.searchRow}>
+        <Reveal index={0} style={styles.searchRow}>
           <View style={styles.searchInput}>
             <Ionicons name="search" size={18} color={palette.textMuted} />
             <TextInput
@@ -38,35 +42,47 @@ export default function SpecialistsScreen() {
               style={styles.input}
             />
           </View>
-          <Pressable style={styles.searchBtn}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Buscar"
+            style={({ pressed }) => [styles.searchBtn, pressed && styles.pressed]}>
             <Text style={styles.searchBtnText}>Buscar</Text>
           </Pressable>
-        </View>
+        </Reveal>
 
         {/* Filtros */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filters}>
-          {SPECIALTY_FILTERS.map((f) => {
-            const active = f === filter;
-            return (
-              <Pressable
-                key={f}
-                onPress={() => setFilter(f)}
-                style={[styles.filterChip, active && styles.filterChipActive]}>
-                <Text style={[styles.filterText, active && styles.filterTextActive]}>{f}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        <Reveal index={1}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filters}>
+            {SPECIALTY_FILTERS.map((f) => {
+              const active = f === filter;
+              return (
+                <Pressable
+                  key={f}
+                  onPress={() => setFilter(f)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Filtrar por ${f}`}
+                  accessibilityState={{ selected: active }}
+                  style={({ pressed }) => [
+                    styles.filterChip,
+                    active && styles.filterChipActive,
+                    pressed && styles.pressed,
+                  ]}>
+                  <Text style={[styles.filterText, active && styles.filterTextActive]}>{f}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </Reveal>
 
         {/* Lista */}
-        <View style={styles.list}>
+        <Reveal index={2} style={styles.list}>
           {SPECIALISTS.map((s) => (
             <SpecialistCard key={s.id} s={s} onSelect={() => router.push(`/booking/specialist?id=${s.id}`)} />
           ))}
-        </View>
+        </Reveal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -87,7 +103,9 @@ function SpecialistAvatar({ online, size = 64 }: { online?: boolean; size?: numb
 
 function SpecialistCard({ s, onSelect }: { s: Specialist; onSelect: () => void }) {
   return (
-    <Card style={styles.card}>
+    <PressableCard
+      onPress={onSelect}
+      accessibilityLabel={`Ver ${s.name}, ${s.specialty}`}>
       <View style={styles.cardTop}>
         <SpecialistAvatar online={s.online} />
         <View style={styles.cardInfo}>
@@ -116,11 +134,15 @@ function SpecialistCard({ s, onSelect }: { s: Specialist; onSelect: () => void }
             <Text style={styles.metaText}>Consulta: ${s.consulta}</Text>
           </View>
         </View>
-        <Pressable onPress={onSelect} style={styles.selectBtn}>
+        <Pressable
+          onPress={onSelect}
+          accessibilityRole="button"
+          accessibilityLabel={`Seleccionar ${s.name}`}
+          style={({ pressed }) => [styles.selectBtn, pressed && styles.pressed]}>
           <Text style={styles.selectBtnText}>Seleccionar</Text>
         </Pressable>
       </View>
-    </Card>
+    </PressableCard>
   );
 }
 
@@ -142,6 +164,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  iconBtnPressed: { opacity: 0.7 },
   content: { paddingHorizontal: spacing.xl, paddingBottom: CONTENT_BOTTOM_INSET },
 
   searchRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
@@ -179,7 +202,6 @@ const styles = StyleSheet.create({
   filterTextActive: { color: palette.white },
 
   list: { gap: spacing.lg },
-  card: {},
   cardTop: { flexDirection: 'row', gap: spacing.md },
   cardInfo: { flex: 1 },
   onlineDot: {
@@ -212,4 +234,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   selectBtnText: { ...typography.bodyStrong, color: palette.white },
+
+  pressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
 });

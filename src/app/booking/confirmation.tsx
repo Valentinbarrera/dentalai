@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Reveal } from '@/components/ui/reveal';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
 export default function ConfirmationScreen() {
@@ -19,20 +20,23 @@ export default function ConfirmationScreen() {
     <SafeAreaView style={styles.safe}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* Éxito */}
-        <View style={styles.successWrap}>
-          <View style={styles.glow} />
-          <View style={styles.ring} />
-          <View style={styles.checkCircle}>
-            <Ionicons name="checkmark" size={40} color={palette.white} />
+        <Reveal index={0}>
+          <View style={styles.successWrap}>
+            <View style={styles.glow} />
+            <View style={styles.ring} />
+            <View style={styles.checkCircle}>
+              <Ionicons name="checkmark" size={40} color={palette.white} />
+            </View>
           </View>
-        </View>
 
-        <Text style={styles.title}>Turno confirmado</Text>
-        <Text style={styles.subtitle}>
-          Tu cita fue agendada con éxito. Te esperamos para cuidar tu sonrisa.
-        </Text>
+          <Text style={styles.title}>¡Turno confirmado!</Text>
+          <Text style={styles.subtitle}>
+            Tu cita fue agendada con éxito. Te esperamos para cuidar tu sonrisa.
+          </Text>
+        </Reveal>
 
         {/* Detalles */}
+        <Reveal index={1}>
         <Card style={styles.card}>
           <Text style={styles.cardTitle}>Detalles del Turno</Text>
           <View style={styles.divider} />
@@ -58,26 +62,33 @@ export default function ConfirmationScreen() {
             last
           />
         </Card>
+        </Reveal>
       </ScrollView>
 
       {/* Acciones */}
-      <View style={styles.actions}>
+      <Reveal index={2} style={styles.actions}>
         <Button
           label="Agregar al calendario"
+          accessibilityLabel="Agregar el turno al calendario"
           left={<Ionicons name="calendar" size={18} color={palette.white} />}
           onPress={() => {}}
         />
         <Button
           label="Abrir WhatsApp"
           variant="outline"
+          accessibilityLabel="Abrir WhatsApp de la clínica"
           left={<Ionicons name="logo-whatsapp" size={18} color={palette.primary} />}
           onPress={() => {}}
           style={styles.waBtn}
         />
-        <Pressable onPress={goHome} style={styles.homeLink}>
+        <Pressable
+          onPress={goHome}
+          accessibilityRole="button"
+          accessibilityLabel="Volver al inicio"
+          style={({ pressed }) => [styles.homeLink, pressed && styles.homeLinkPressed]}>
           <Text style={styles.homeLinkText}>Volver al inicio</Text>
         </Pressable>
-      </View>
+      </Reveal>
     </SafeAreaView>
   );
 }
@@ -172,5 +183,6 @@ const styles = StyleSheet.create({
   actions: { paddingHorizontal: spacing.xl, paddingBottom: spacing.lg, gap: spacing.md },
   waBtn: {},
   homeLink: { alignItems: 'center', paddingVertical: spacing.sm },
+  homeLinkPressed: { opacity: 0.6 },
   homeLinkText: { ...typography.bodyStrong, color: palette.primary },
 });

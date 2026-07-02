@@ -3,8 +3,10 @@ import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BrandHeader } from '@/components/ui/brand-header';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Reveal } from '@/components/ui/reveal';
 import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
 import { PAYMENT_PLANS, PaymentPlan } from '@/lib/diagnosis';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
@@ -14,16 +16,21 @@ export default function PagoOpcionesScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <BrandHeader />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <View style={styles.eyebrowRow}>
-          <MaterialCommunityIcons name="cash-multiple" size={16} color={palette.primary} />
-          <Text style={styles.eyebrow}>TREATMENT OPTIONS</Text>
-        </View>
-        <Text style={styles.title}>Opciones de Pago</Text>
-        <Text style={styles.subtitle}>Elegí cómo querés pagar tu tratamiento dental seleccionado.</Text>
+        <Reveal index={0}>
+          <View style={styles.eyebrowRow}>
+            <MaterialCommunityIcons name="cash-multiple" size={16} color={palette.primary} />
+            <Text style={styles.eyebrow}>MÉTODOS DE PAGO</Text>
+          </View>
+          <Text style={styles.title}>Opciones de Pago</Text>
+          <Text style={styles.subtitle}>Elegí cómo querés pagar tu tratamiento dental seleccionado.</Text>
+        </Reveal>
 
-        {PAYMENT_PLANS.map((p) => (
-          <PlanCard key={p.id} plan={p} onPress={() => router.push('/booking/agenda')} />
+        {PAYMENT_PLANS.map((p, i) => (
+          <Reveal key={p.id} index={i + 1}>
+            <PlanCard plan={p} onPress={() => router.push('/booking/agenda')} />
+          </Reveal>
         ))}
       </ScrollView>
     </SafeAreaView>

@@ -9,6 +9,7 @@ import { BrandHeader } from '@/components/ui/brand-header';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ProgressRing } from '@/components/ui/progress-ring';
+import { Reveal } from '@/components/ui/reveal';
 import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
 import { AFFECTED_ZONES, AffectedZone, Severity } from '@/lib/diagnosis';
 import { palette, radius, shadow, spacing, typography } from '@/theme/tokens';
@@ -27,16 +28,19 @@ export default function ResultsScreen() {
       <BrandHeader />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* Encabezado */}
-        <View style={styles.eyebrowRow}>
-          <MaterialCommunityIcons name="tooth-outline" size={16} color={palette.primary} />
-          <Text style={styles.eyebrow}>ANÁLISIS COMPLETADO</Text>
-        </View>
-        <Text style={styles.title}>Resultados del Escaneo</Text>
-        <Text style={styles.subtitle}>
-          Basado en las imágenes radiográficas subidas el 24 de Octubre.
-        </Text>
+        <Reveal index={0}>
+          <View style={styles.eyebrowRow}>
+            <MaterialCommunityIcons name="tooth-outline" size={16} color={palette.primary} />
+            <Text style={styles.eyebrow}>ANÁLISIS COMPLETADO</Text>
+          </View>
+          <Text style={styles.title}>Resultados del Escaneo</Text>
+          <Text style={styles.subtitle}>
+            Basado en las imágenes radiográficas subidas el 24 de Octubre.
+          </Text>
+        </Reveal>
 
         {/* Diagnóstico principal */}
+        <Reveal index={1}>
         <Card style={styles.diagCard}>
           <Badge label="⚠  Atención Requerida" tone="danger" />
           <Text style={styles.diagLabel}>Diagnóstico preliminar:</Text>
@@ -59,48 +63,62 @@ export default function ResultsScreen() {
             onPress={() => {}}
           />
         </Card>
+        </Reveal>
 
         {/* Nivel de confianza */}
-        <LinearGradient
-          colors={['#CFF3EC', '#DCEAFE']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.confCard, shadow.card]}>
-          <Text style={styles.confLabel}>NIVEL DE CONFIANZA IA</Text>
-          <ProgressRing value={87} size={140} strokeWidth={12} />
-          <View style={styles.confFooter}>
-            <MaterialCommunityIcons name="shield-check" size={16} color={palette.teal} />
-            <Text style={styles.confFooterText}>Alta precisión estimada</Text>
-          </View>
-        </LinearGradient>
+        <Reveal index={2}>
+          <LinearGradient
+            colors={['#CFF3EC', '#DCEAFE']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.confCard, shadow.card]}>
+            <Text style={styles.confLabel}>NIVEL DE CONFIANZA IA</Text>
+            <ProgressRing value={87} size={140} strokeWidth={12} />
+            <View style={styles.confFooter}>
+              <MaterialCommunityIcons name="shield-check" size={16} color={palette.teal} />
+              <Text style={styles.confFooterText}>Alta precisión estimada</Text>
+            </View>
+          </LinearGradient>
+        </Reveal>
 
         {/* Aviso importante */}
-        <View style={styles.notice}>
-          <View style={styles.noticeIcon}>
-            <Ionicons name="information" size={16} color={palette.white} />
+        <Reveal index={3}>
+          <View style={styles.notice}>
+            <View style={styles.noticeIcon}>
+              <Ionicons name="information" size={16} color={palette.white} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={styles.noticeTitle}>Aviso Importante</Text>
+              <Text style={styles.noticeText}>
+                Este resultado es un análisis preliminar generado por inteligencia artificial y{' '}
+                <Text style={styles.noticeBold}>
+                  debe ser confirmado por un profesional odontológico cualificado
+                </Text>{' '}
+                antes de iniciar cualquier tratamiento.
+              </Text>
+            </View>
           </View>
-          <View style={styles.flex}>
-            <Text style={styles.noticeTitle}>Aviso Importante</Text>
-            <Text style={styles.noticeText}>
-              Este resultado es un análisis preliminar generado por inteligencia artificial y{' '}
-              <Text style={styles.noticeBold}>
-                debe ser confirmado por un profesional odontológico cualificado
-              </Text>{' '}
-              antes de iniciar cualquier tratamiento.
-            </Text>
-          </View>
-        </View>
+        </Reveal>
 
         {/* Zonas afectadas */}
-        <Text style={styles.sectionTitle}>Zonas Afectadas</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.zonesRow}>
-          {AFFECTED_ZONES.map((z) => (
-            <ZoneCard key={z.id} zone={z} />
-          ))}
-        </ScrollView>
+        <Reveal index={4}>
+          <Text style={styles.sectionTitle}>Zonas Afectadas</Text>
+          {AFFECTED_ZONES.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.zonesRow}>
+              {AFFECTED_ZONES.map((z) => (
+                <ZoneCard key={z.id} zone={z} />
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.emptyZones}>
+              <MaterialCommunityIcons name="tooth-outline" size={28} color={palette.textMuted} />
+              <Text style={styles.emptyZonesText}>No se detectaron zonas afectadas.</Text>
+            </View>
+          )}
+        </Reveal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -158,7 +176,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: palette.textSecondary,
+    backgroundColor: palette.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -173,4 +191,11 @@ const styles = StyleSheet.create({
   zoneDot: { width: 10, height: 10, borderRadius: 5 },
   zoneName: { ...typography.bodyStrong, color: palette.textPrimary, marginTop: spacing.md },
   zoneStatus: { ...typography.caption, fontWeight: '700', marginTop: 2 },
+
+  emptyZones: {
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing['2xl'],
+  },
+  emptyZonesText: { ...typography.caption, color: palette.textSecondary },
 });

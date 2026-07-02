@@ -7,6 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { PressableCard } from '@/components/ui/pressable-card';
+import { Reveal } from '@/components/ui/reveal';
 import { palette, radius, shadow, spacing, typography } from '@/theme/tokens';
 
 type Appt = {
@@ -56,30 +58,45 @@ export default function PortalScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.iconBtn}>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}>
           <Ionicons name="arrow-back" size={22} color={palette.primary} />
         </Pressable>
         <Text style={styles.logo}>DentalAI</Text>
-        <Pressable style={styles.iconBtn}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Notificaciones"
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}>
           <Ionicons name="notifications-outline" size={20} color={palette.primary} />
+          <View style={styles.notifDot} />
         </Pressable>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Text style={styles.greeting}>Buen día, Dr. Smith</Text>
-        <Text style={styles.subGreeting}>Este es el resumen de tu clínica para hoy.</Text>
-        <Button
-          label="Nuevo Turno"
-          fullWidth={false}
-          size="md"
-          left={<Ionicons name="add" size={20} color={palette.white} />}
-          onPress={() => {}}
-          style={styles.newBtn}
-        />
+        {/* Saludo + CTA */}
+        <Reveal index={0}>
+          <Text style={styles.greeting}>Buen día, Dr. Smith</Text>
+          <Text style={styles.subGreeting}>Este es el resumen de tu clínica para hoy.</Text>
+          <Button
+            label="Nuevo Turno"
+            fullWidth={false}
+            size="md"
+            left={<Ionicons name="add" size={20} color={palette.white} />}
+            onPress={() => {}}
+            accessibilityLabel="Crear un nuevo turno"
+            style={styles.newBtn}
+          />
+        </Reveal>
 
         {/* Credenciales */}
-        <Pressable onPress={() => router.push('/portal-credentials')}>
-          <Card style={styles.credCard}>
+        <Reveal index={1}>
+          <PressableCard
+            onPress={() => router.push('/portal-credentials')}
+            accessibilityLabel="Completá tus credenciales profesionales"
+            style={styles.credCard}>
             <View style={styles.credIcon}>
               <MaterialCommunityIcons name="certificate-outline" size={22} color={palette.primary} />
             </View>
@@ -88,85 +105,118 @@ export default function PortalScreen() {
               <Text style={styles.credSub}>Cargá tu título y matrícula para verificar tu perfil.</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={palette.textMuted} />
-          </Card>
-        </Pressable>
+          </PressableCard>
+        </Reveal>
 
         {/* Métricas */}
-        <MetricCard icon="calendar-outline" label="Turnos hoy" value="14" delta="12%" progress={0.75} tone={palette.primary} />
-        <MetricCard icon="clipboard-outline" label="Turnos semana" value="68" delta="5%" progress={0.6} tone={palette.teal} />
+        <Reveal index={2}>
+          <View style={styles.metricsRow}>
+            <MetricCard icon="calendar-outline" label="Turnos hoy" value="14" delta="12%" progress={0.75} tone={palette.primary} />
+            <MetricCard icon="clipboard-outline" label="Turnos semana" value="68" delta="5%" progress={0.6} tone={palette.teal} />
+          </View>
+        </Reveal>
 
         {/* Ingresos */}
-        <LinearGradient colors={[palette.primary, palette.primaryDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.revenue, shadow.card]}>
-          <View style={styles.revenueTop}>
-            <View style={styles.revenueIcon}>
-              <MaterialCommunityIcons name="wallet-outline" size={22} color={palette.white} />
+        <Reveal index={3}>
+          <LinearGradient colors={[palette.primary, palette.primaryDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.revenue, shadow.card]}>
+            <View style={styles.revenueTop}>
+              <View style={styles.revenueIcon}>
+                <MaterialCommunityIcons name="wallet-outline" size={22} color={palette.white} />
+              </View>
+              <View style={styles.revenueBadge}>
+                <Ionicons name="arrow-up" size={12} color={palette.white} />
+                <Text style={styles.revenueBadgeText}>18% vs mes pasado</Text>
+              </View>
             </View>
-            <View style={styles.revenueBadge}>
-              <Ionicons name="arrow-up" size={12} color={palette.white} />
-              <Text style={styles.revenueBadgeText}>18% vs mes pasado</Text>
-            </View>
-          </View>
-          <Text style={styles.revenueLabel}>Ingresos del mes</Text>
-          <Text style={styles.revenueValue}>$42,500</Text>
-        </LinearGradient>
+            <Text style={styles.revenueLabel}>Ingresos del mes</Text>
+            <Text style={styles.revenueValue}>$42,500</Text>
+          </LinearGradient>
+        </Reveal>
 
         {/* Agenda de hoy */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Agenda de Hoy</Text>
-          <Pressable>
-            <Text style={styles.link}>Ver calendario</Text>
-          </Pressable>
-        </View>
-
-        <Card style={styles.scheduleCard}>
-          <View style={styles.daysRow}>
-            <Ionicons name="chevron-back" size={18} color={palette.textSecondary} />
-            {DAYS.map((d) => (
-              <View key={d.id} style={[styles.dayCard, d.active && styles.dayActive]}>
-                <Text style={[styles.dayLabel, d.active && styles.dayTextActive]}>{d.day}</Text>
-                <Text style={[styles.dayNum, d.active && styles.dayTextActive]}>{d.date}</Text>
-                {d.dot && <View style={styles.dayDot} />}
-              </View>
-            ))}
-            <Ionicons name="chevron-forward" size={18} color={palette.textSecondary} />
+        <Reveal index={4}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Agenda de Hoy</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ver calendario completo"
+              hitSlop={8}
+              style={({ pressed }) => pressed && styles.linkPressed}>
+              <Text style={styles.link}>Ver calendario</Text>
+            </Pressable>
           </View>
 
-          <View style={styles.divider} />
+          <Card style={styles.scheduleCard}>
+            <View style={styles.daysRow}>
+              <Ionicons name="chevron-back" size={18} color={palette.textSecondary} />
+              {DAYS.map((d) => (
+                <View key={d.id} style={[styles.dayCard, d.active && styles.dayActive]}>
+                  <Text style={[styles.dayLabel, d.active && styles.dayTextActive]}>{d.day}</Text>
+                  <Text style={[styles.dayNum, d.active && styles.dayTextActive]}>{d.date}</Text>
+                  {d.dot && <View style={styles.dayDot} />}
+                </View>
+              ))}
+              <Ionicons name="chevron-forward" size={18} color={palette.textSecondary} />
+            </View>
 
-          {APPTS.map((a) => (
-            <ScheduleItem key={a.id} appt={a} />
-          ))}
-        </Card>
+            <View style={styles.divider} />
+
+            {APPTS.length > 0 ? (
+              APPTS.map((a) => <ScheduleItem key={a.id} appt={a} />)
+            ) : (
+              <EmptyState
+                icon="calendar-outline"
+                title="Sin turnos para hoy"
+                subtitle="Cuando agendes turnos, aparecerán acá."
+              />
+            )}
+          </Card>
+        </Reveal>
 
         {/* Pacientes recientes */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Pacientes Recientes</Text>
-          <Pressable style={styles.searchBtn}>
-            <Ionicons name="search" size={18} color={palette.primary} />
-          </Pressable>
-        </View>
-
-        <Card style={styles.patientsCard}>
-          <View style={styles.patientsHead}>
-            <Text style={styles.patientsHeadText}>Paciente</Text>
-            <Text style={styles.patientsHeadText}>Estado</Text>
+        <Reveal index={5}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Pacientes Recientes</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Buscar pacientes"
+              style={({ pressed }) => [styles.searchBtn, pressed && styles.iconBtnPressed]}>
+              <Ionicons name="search" size={18} color={palette.primary} />
+            </Pressable>
           </View>
-          {PATIENTS.map((p) => (
-            <View key={p.id} style={styles.patientRow}>
-              <View style={styles.patientLeft}>
-                <View style={[styles.patientAvatar, { backgroundColor: p.color }]}>
-                  <Text style={styles.patientInitials}>{p.initials}</Text>
+
+          <Card style={styles.patientsCard}>
+            {PATIENTS.length > 0 ? (
+              <>
+                <View style={styles.patientsHead}>
+                  <Text style={styles.patientsHeadText}>Paciente</Text>
+                  <Text style={styles.patientsHeadText}>Estado</Text>
                 </View>
-                <View>
-                  <Text style={styles.patientName}>{p.name}</Text>
-                  <Text style={styles.patientWhen}>{p.when}</Text>
-                </View>
-              </View>
-              <Badge label={p.paid ? '● Pagado' : '● Pendiente'} tone={p.paid ? 'success' : 'danger'} />
-            </View>
-          ))}
-          <Button label="Ver todos los pacientes" variant="outline" onPress={() => {}} style={styles.allBtn} />
-        </Card>
+                {PATIENTS.map((p) => (
+                  <View key={p.id} style={styles.patientRow}>
+                    <View style={styles.patientLeft}>
+                      <View style={[styles.patientAvatar, { backgroundColor: p.color }]}>
+                        <Text style={styles.patientInitials}>{p.initials}</Text>
+                      </View>
+                      <View>
+                        <Text style={styles.patientName}>{p.name}</Text>
+                        <Text style={styles.patientWhen}>{p.when}</Text>
+                      </View>
+                    </View>
+                    <Badge label={p.paid ? '● Pagado' : '● Pendiente'} tone={p.paid ? 'success' : 'danger'} />
+                  </View>
+                ))}
+                <Button label="Ver todos los pacientes" variant="outline" onPress={() => {}} style={styles.allBtn} />
+              </>
+            ) : (
+              <EmptyState
+                icon="people-outline"
+                title="Todavía no hay pacientes"
+                subtitle="Los pacientes recientes se mostrarán en esta lista."
+              />
+            )}
+          </Card>
+        </Reveal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -207,6 +257,26 @@ function MetricCard({
   );
 }
 
+function EmptyState({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <View style={styles.empty}>
+      <View style={styles.emptyIcon}>
+        <Ionicons name={icon} size={26} color={palette.textMuted} />
+      </View>
+      <Text style={styles.emptyTitle}>{title}</Text>
+      <Text style={styles.emptySub}>{subtitle}</Text>
+    </View>
+  );
+}
+
 function ScheduleItem({ appt }: { appt: Appt }) {
   const tone = TAG_TONE[appt.tagTone];
   return (
@@ -234,7 +304,10 @@ function ScheduleItem({ appt }: { appt: Appt }) {
           </View>
         )}
         {appt.primary && (
-          <Pressable style={styles.startBtn}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Iniciar sesión con ${appt.name}`}
+            style={({ pressed }) => [styles.startBtn, pressed && styles.startBtnPressed]}>
             <Ionicons name="play" size={14} color={palette.white} />
             <Text style={styles.startBtnText}>Iniciar sesión</Text>
           </Pressable>
@@ -261,6 +334,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  iconBtnPressed: { opacity: 0.7, transform: [{ scale: 0.96 }] },
+  notifDot: {
+    position: 'absolute',
+    top: 9,
+    right: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: palette.danger,
+    borderWidth: 1.5,
+    borderColor: palette.primaryLight,
+  },
   logo: { ...typography.h2, fontSize: 20, color: palette.primary, fontWeight: '800' },
   content: { paddingHorizontal: spacing.xl, paddingBottom: spacing['3xl'] },
 
@@ -274,7 +359,8 @@ const styles = StyleSheet.create({
   credTitle: { ...typography.bodyStrong, color: palette.textPrimary },
   credSub: { ...typography.caption, color: palette.textSecondary, marginTop: 2 },
 
-  metric: { marginTop: spacing.lg },
+  metricsRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
+  metric: { flex: 1 },
   metricTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   metricIcon: {
     width: 40,
@@ -290,12 +376,12 @@ const styles = StyleSheet.create({
     gap: 4,
     backgroundColor: palette.successSoft,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 4,
   },
   deltaText: { ...typography.caption, color: palette.success, fontWeight: '700' },
-  metricLabel: { ...typography.body, color: palette.textSecondary, marginTop: spacing.md },
-  metricValue: { ...typography.h1, fontSize: 32, color: palette.textPrimary, marginTop: 2 },
+  metricLabel: { ...typography.caption, color: palette.textSecondary, marginTop: spacing.md },
+  metricValue: { ...typography.h1, fontSize: 30, color: palette.textPrimary, marginTop: 2 },
   metricTrack: { height: 6, borderRadius: radius.pill, backgroundColor: palette.surfaceAlt, marginTop: spacing.md, overflow: 'hidden' },
   metricFill: { height: '100%', borderRadius: radius.pill },
 
@@ -331,6 +417,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { ...typography.h2, fontSize: 20, color: palette.textPrimary },
   link: { ...typography.bodyStrong, color: palette.primary },
+  linkPressed: { opacity: 0.6 },
   searchBtn: {
     width: 36,
     height: 36,
@@ -383,6 +470,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     marginTop: spacing.md,
   },
+  startBtnPressed: { opacity: 0.85, transform: [{ scale: 0.99 }] },
   startBtnText: { ...typography.bodyStrong, color: palette.white },
 
   patientsCard: {},
@@ -402,4 +490,17 @@ const styles = StyleSheet.create({
   patientName: { ...typography.bodyStrong, color: palette.textPrimary },
   patientWhen: { ...typography.small, color: palette.textMuted },
   allBtn: { marginTop: spacing.lg },
+
+  empty: { alignItems: 'center', paddingVertical: spacing.xl, gap: spacing.xs },
+  emptyIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: palette.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  emptyTitle: { ...typography.bodyStrong, color: palette.textPrimary },
+  emptySub: { ...typography.caption, color: palette.textSecondary, textAlign: 'center' },
 });

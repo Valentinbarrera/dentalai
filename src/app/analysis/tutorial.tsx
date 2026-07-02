@@ -6,6 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CameraGuide } from '@/components/analysis/camera-guide';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Reveal } from '@/components/ui/reveal';
 import { palette, radius, shadow, spacing, typography } from '@/theme/tokens';
 
 type Rule = {
@@ -42,8 +43,9 @@ const RULES: Rule[] = [
 
 const STEPS = [
   { title: 'Buscá luz clara', desc: 'Acercate a una ventana o encendé una luz frontal brillante.' },
-  { title: 'Alineá la guía', desc: 'Colocá tus dientes dentro del óvalo en pantalla.' },
-  { title: 'Seguí las instrucciones', desc: 'DENTA IA te guiará para capturar diferentes ángulos.' },
+  { title: 'Sacá 3 fotos guiadas', desc: 'Frente y ambos perfiles: alineá tu sonrisa dentro del óvalo.' },
+  { title: 'Grabá un video 360°', desc: 'Frente al espejo, movés el celular lento de lado a lado.' },
+  { title: 'DENTA arma tu modelo 3D', desc: 'Fusiona todo para diagnosticar con más precisión.' },
 ];
 
 export default function TutorialScreen() {
@@ -54,52 +56,65 @@ export default function TutorialScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} accessibilityLabel="Volver" style={styles.back}>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
+          hitSlop={8}
+          style={({ pressed }) => [styles.back, pressed && styles.backPressed]}>
           <Ionicons name="arrow-back" size={24} color={palette.primary} />
         </Pressable>
         <Text style={styles.headerTitle}>Instrucciones de Análisis</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Text style={styles.intro}>
-          Para que DENTA IA pueda analizar tu salud bucal con precisión, seguí estas reglas básicas
-          al tomar tus fotografías.
-        </Text>
+        <Reveal index={0}>
+          <Text style={styles.intro}>
+            Vas a sacar 3 fotos y grabar un video corto para que DENTA IA reconstruya un modelo 3D de
+            tu sonrisa. Seguí estas reglas básicas para un mejor resultado.
+          </Text>
+        </Reveal>
 
         {/* Reglas 2x2 */}
-        <View style={styles.rulesGrid}>
-          {RULES.map((r) => (
-            <RuleCard key={r.title} {...r} />
-          ))}
-        </View>
+        <Reveal index={1}>
+          <View style={styles.rulesGrid}>
+            {RULES.map((r) => (
+              <RuleCard key={r.title} {...r} />
+            ))}
+          </View>
+        </Reveal>
 
         {/* Guía paso a paso */}
-        <Card style={styles.guideCard}>
-          <Text style={styles.guideTitle}>Guía paso a paso</Text>
-          {STEPS.map((s, i) => (
-            <View key={s.title} style={styles.stepRow}>
-              <View style={styles.stepNumberCol}>
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>{i + 1}</Text>
+        <Reveal index={2}>
+          <Card style={styles.guideCard}>
+            <Text style={styles.guideTitle}>Guía paso a paso</Text>
+            {STEPS.map((s, i) => (
+              <View key={s.title} style={styles.stepRow}>
+                <View style={styles.stepNumberCol}>
+                  <View style={styles.stepNumber}>
+                    <Text style={styles.stepNumberText}>{i + 1}</Text>
+                  </View>
+                  {i < STEPS.length - 1 && <View style={styles.stepLine} />}
                 </View>
-                {i < STEPS.length - 1 && <View style={styles.stepLine} />}
+                <View style={styles.stepTextCol}>
+                  <Text style={styles.stepTitle}>{s.title}</Text>
+                  <Text style={styles.stepDesc}>{s.desc}</Text>
+                </View>
               </View>
-              <View style={styles.stepTextCol}>
-                <Text style={styles.stepTitle}>{s.title}</Text>
-                <Text style={styles.stepDesc}>{s.desc}</Text>
-              </View>
-            </View>
-          ))}
-        </Card>
+            ))}
+          </Card>
+        </Reveal>
 
         {/* Mockup ilustrativo de la cámara */}
-        <View style={[styles.mockup, shadow.card]}>
-          <CameraGuide width={320} height={180} color={palette.teal} />
-          <View style={styles.mockupBadge}>
-            <Ionicons name="scan-outline" size={16} color={palette.white} />
-            <Text style={styles.mockupBadgeText}>Alineá tus dientes aquí</Text>
+        <Reveal index={3}>
+          <View style={[styles.mockup, shadow.card]}>
+            <CameraGuide width={320} height={180} color={palette.teal} />
+            <View style={styles.mockupBadge}>
+              <Ionicons name="scan-outline" size={16} color={palette.white} />
+              <Text style={styles.mockupBadgeText}>Alineá tus dientes aquí</Text>
+            </View>
           </View>
-        </View>
+        </Reveal>
       </ScrollView>
 
       {/* CTA fijo */}
@@ -144,7 +159,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
-  back: { padding: spacing.xs },
+  back: {
+    padding: spacing.xs,
+    borderRadius: radius.pill,
+  },
+  backPressed: { opacity: 0.6, backgroundColor: palette.primarySoft },
   headerTitle: { ...typography.h2, fontSize: 20, color: palette.primary, fontWeight: '700' },
   content: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
   intro: {

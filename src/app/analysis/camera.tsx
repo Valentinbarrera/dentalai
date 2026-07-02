@@ -1,13 +1,22 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { CameraView, FlashMode, useCameraPermissions } from 'expo-camera';
+import {
+  CameraType,
+  CameraView,
+  FlashMode,
+  useCameraPermissions,
+  useMicrophonePermissions,
+} from 'expo-camera';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CameraGuide } from '@/components/analysis/camera-guide';
-import { ANALYSIS_STEPS } from '@/lib/analysis-steps';
+import { Button } from '@/components/ui/button';
+import { Reveal } from '@/components/ui/reveal';
+import { PHOTO_ANGLES, TOTAL_CAPTURES, VIDEO_CAPTURE } from '@/lib/analysis-steps';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
 const FLASH_CYCLE: FlashMode[] = ['auto', 'on', 'off'];
@@ -18,36 +27,98 @@ const FLASH_ICON: Record<FlashMode, keyof typeof Ionicons.glyphMap> = {
   screen: 'sunny-outline',
 };
 
+type Phase = 'photos' | 'video';
+
+const fmtTime = (s: number) => `0:${String(s).padStart(2, '0')}`;
+
 export default function CameraScreen() {
   const router = useRouter();
+  const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
+  const [micPermission, requestMic] = useMicrophonePermissions();
 
-  const [stepIndex, setStepIndex] = useState(0);
+  const [phase, setPhase] = useState<Phase>('photos');
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [recording, setRecording] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<FlashMode>('auto');
+  const [facing, setFacing] = useState<CameraType>('front');
   const [guide, setGuide] = useState({ w: 0, h: 0 });
 
-  const total = ANALYSIS_STEPS.length;
-  const step = ANALYSIS_STEPS[stepIndex];
-  const progress = ((stepIndex + 1) / total) * 100;
+  // Timer visible mientras se graba el video
+  useEffect(() => {
+    if (!recording) return;
+    const id = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(id);
+  }, [recording]);
+
+  const photoIndex = photos.length;
+  const angle = PHOTO_ANGLES[Math.min(photoIndex, PHOTO_ANGLES.length - 1)];
+  const progress =
+    phase === 'photos'
+      ? (photos.length / TOTAL_CAPTURES) * 100
+      : ((PHOTO_ANGLES.length + Math.min(elapsed / VIDEO_CAPTURE.maxDuration, 1)) / TOTAL_CAPTURES) *
+        100;
 
   const onGuideLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     setGuide({ w: width, h: height });
   };
 
-  const handleCapture = () => {
-    if (stepIndex < total - 1) {
-      setStepIndex((i) => i + 1);
-    } else {
-      // Capturados los 6 ángulos → al procesamiento
-      router.replace('/analysis/processing');
+  const capturePhoto = async () => {
+    if (busy || phase !== 'photos') return;
+    setBusy(true);
+    try {
+      const shot = await cameraRef.current?.takePictureAsync({ quality: 0.7, skipProcessing: true });
+      addPhoto(shot?.uri ?? '');
+    } catch {
+      // En web o si el disparo falla, avanzamos igual para no trabar el demo.
+      addPhoto('');
+    } finally {
+      setBusy(false);
     }
   };
 
-  const cycleFlash = () => {
-    const next = FLASH_CYCLE[(FLASH_CYCLE.indexOf(flash) + 1) % FLASH_CYCLE.length];
-    setFlash(next);
+  const addPhoto = (uri: string) => {
+    setPhotos((prev) => {
+      const next = [...prev, uri];
+      if (next.length >= PHOTO_ANGLES.length) setPhase('video');
+      return next;
+    });
   };
+
+  const toggleRecording = async () => {
+    if (recording) {
+      cameraRef.current?.stopRecording();
+      return;
+    }
+    if (!micPermission?.granted) {
+      const res = await requestMic();
+      if (!res?.granted) return;
+    }
+    setElapsed(0);
+    setRecording(true);
+    try {
+      const rec = await cameraRef.current?.recordAsync({ maxDuration: VIDEO_CAPTURE.maxDuration });
+      finish(rec?.uri ?? null);
+    } catch {
+      finish(null);
+    }
+  };
+
+  const finish = (videoUri: string | null) => {
+    setRecording(false);
+    router.replace({
+      pathname: '/analysis/processing',
+      params: { photos: String(photos.length), video: videoUri ? '1' : '0' },
+    });
+  };
+
+  const cycleFlash = () => {
+    setFlash(FLASH_CYCLE[(FLASH_CYCLE.indexOf(flash) + 1) % FLASH_CYCLE.length]);
+  };
+  const flipFacing = () => setFacing((f) => (f === 'front' ? 'back' : 'front'));
 
   const granted = permission?.granted ?? false;
 
@@ -57,7 +128,13 @@ export default function CameraScreen() {
 
       {/* Fondo: cámara real o placeholder oscuro */}
       {granted ? (
-        <CameraView style={StyleSheet.absoluteFill} facing="front" flash={flash} />
+        <CameraView
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          facing={facing}
+          flash={flash}
+          mode={phase === 'video' ? 'video' : 'picture'}
+        />
       ) : (
         <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
       )}
@@ -67,18 +144,38 @@ export default function CameraScreen() {
         {/* Barra superior */}
         <SafeAreaView edges={['top']}>
           <View style={styles.topBar}>
-            <Pressable onPress={() => router.back()} accessibilityLabel="Cerrar" style={styles.roundBtn}>
+            <Pressable
+              onPress={() => router.back()}
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar"
+              hitSlop={8}
+              style={({ pressed }) => [styles.roundBtn, pressed && styles.roundBtnPressed]}>
               <Ionicons name="close" size={24} color={palette.white} />
             </Pressable>
 
-            <View style={styles.statusPill}>
-              <View style={styles.liveDot} />
-              <Text style={styles.statusText}>DENTA IA ACTIVE</Text>
-              <View style={styles.statusDivider} />
-              <Text style={styles.statusSub}>LUZ: ÓPTIMO{'\n'}ENFOQUE: LISTO</Text>
-            </View>
+            {recording ? (
+              <View style={styles.recPill}>
+                <View style={styles.recDot} />
+                <Text style={styles.recText}>REC {fmtTime(elapsed)}</Text>
+              </View>
+            ) : (
+              <View style={styles.statusPill}>
+                <View style={styles.liveDot} />
+                <Text style={styles.statusText}>DENTA IA ACTIVE</Text>
+                <View style={styles.statusDivider} />
+                <Text style={styles.statusSub}>
+                  {phase === 'photos' ? 'MODO FOTO' : 'MODO 3D'}
+                  {'\n'}ENFOQUE: LISTO
+                </Text>
+              </View>
+            )}
 
-            <Pressable onPress={cycleFlash} accessibilityLabel="Flash" style={styles.roundBtn}>
+            <Pressable
+              onPress={cycleFlash}
+              accessibilityRole="button"
+              accessibilityLabel={`Flash: ${flash}`}
+              hitSlop={8}
+              style={({ pressed }) => [styles.roundBtn, pressed && styles.roundBtnPressed]}>
               <Ionicons name={FLASH_ICON[flash]} size={22} color={palette.white} />
             </Pressable>
           </View>
@@ -88,76 +185,150 @@ export default function CameraScreen() {
           <>
             {/* Área de guía */}
             <View style={styles.guideArea} onLayout={onGuideLayout}>
-              <CameraGuide width={guide.w} height={guide.h} />
-              <Text style={styles.guideHint}>Alineá la arcada dentro de la guía</Text>
+              <CameraGuide
+                width={guide.w}
+                height={guide.h}
+                color={recording ? '#F87171' : palette.teal}
+              />
+              <Text style={styles.guideHint}>
+                {phase === 'photos' ? angle.hint : VIDEO_CAPTURE.hint}
+              </Text>
             </View>
 
             {/* Panel inferior */}
             <View style={styles.bottomPanel}>
+              {/* Indicador de pasos: 3 fotos + video */}
               <View style={styles.stepsRow}>
-                {ANALYSIS_STEPS.map((s, i) => {
-                  const state = i < stepIndex ? 'done' : i === stepIndex ? 'active' : 'pending';
+                {PHOTO_ANGLES.map((s, i) => {
+                  const state = i < photos.length ? 'done' : phase === 'photos' && i === photos.length ? 'active' : 'pending';
                   return (
-                    <View key={s.id} style={styles.stepItem}>
-                      <View
-                        style={[
-                          styles.stepCircle,
-                          state === 'active' && styles.stepActive,
-                          state === 'done' && styles.stepDone,
-                        ]}>
-                        {state === 'done' ? (
-                          <Ionicons name="checkmark" size={16} color={palette.white} />
-                        ) : (
-                          <Text
-                            style={[
-                              styles.stepNum,
-                              state === 'active' && styles.stepNumActive,
-                            ]}>
-                            {i + 1}
-                          </Text>
-                        )}
-                      </View>
-                      <Text
-                        style={[styles.stepLabel, state === 'active' && styles.stepLabelActive]}
-                        numberOfLines={1}>
-                        {s.short}
-                      </Text>
-                    </View>
+                    <StepChip key={s.id} label={s.short} state={state}>
+                      {state === 'done' ? (
+                        <Ionicons name="checkmark" size={16} color={palette.white} />
+                      ) : (
+                        <Text style={[styles.stepNum, state === 'active' && styles.stepNumActive]}>
+                          {i + 1}
+                        </Text>
+                      )}
+                    </StepChip>
                   );
                 })}
+                <StepChip label={VIDEO_CAPTURE.short} state={phase === 'video' ? 'active' : 'pending'}>
+                  <Ionicons
+                    name="videocam"
+                    size={15}
+                    color={phase === 'video' ? palette.white : 'rgba(255,255,255,0.7)'}
+                  />
+                </StepChip>
               </View>
 
-              <Text style={styles.instruction}>{step.instruction}</Text>
+              <Text style={styles.instruction}>
+                {phase === 'photos' ? angle.instruction : VIDEO_CAPTURE.instruction}
+              </Text>
 
               <View style={styles.progressTrack}>
                 <View style={[styles.progressFill, { width: `${progress}%` }]} />
               </View>
 
-              {/* Disparador */}
-              <Pressable
-                onPress={handleCapture}
-                accessibilityLabel={`Capturar ${step.short}`}
-                style={({ pressed }) => [styles.shutterOuter, pressed && styles.shutterPressed]}>
-                <View style={styles.shutterInner}>
-                  <MaterialCommunityIcons name="camera-iris" size={30} color={palette.white} />
+              {/* Controles: flip · disparador/rec · miniaturas/omitir */}
+              <View style={styles.controlsRow}>
+                <View style={styles.sideCol}>
+                  {!recording && (
+                    <Pressable
+                      onPress={flipFacing}
+                      accessibilityRole="button"
+                      accessibilityLabel="Girar cámara"
+                      hitSlop={8}
+                      style={({ pressed }) => [styles.sideBtn, pressed && styles.roundBtnPressed]}>
+                      <Ionicons name="camera-reverse-outline" size={24} color={palette.white} />
+                    </Pressable>
+                  )}
                 </View>
-              </Pressable>
+
+                {phase === 'photos' ? (
+                  <Pressable
+                    onPress={capturePhoto}
+                    disabled={busy}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Capturar ${angle.short}`}
+                    accessibilityHint={`Foto ${photoIndex + 1} de ${PHOTO_ANGLES.length}`}
+                    style={({ pressed }) => [styles.shutterOuter, pressed && styles.shutterPressed]}>
+                    <View style={styles.shutterInner}>
+                      <MaterialCommunityIcons name="camera-iris" size={30} color={palette.white} />
+                    </View>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    onPress={toggleRecording}
+                    accessibilityRole="button"
+                    accessibilityLabel={recording ? 'Detener grabación' : 'Grabar video 3D'}
+                    style={({ pressed }) => [styles.shutterOuter, styles.recOuter, pressed && styles.shutterPressed]}>
+                    <View style={recording ? styles.recStop : styles.recStart} />
+                  </Pressable>
+                )}
+
+                <View style={[styles.sideCol, styles.sideColRight]}>
+                  {phase === 'photos' ? (
+                    <View style={styles.thumbs}>
+                      {photos.filter(Boolean).slice(-3).map((uri, i) => (
+                        <Image key={`${uri}-${i}`} source={{ uri }} style={styles.thumb} contentFit="cover" />
+                      ))}
+                    </View>
+                  ) : (
+                    !recording && (
+                      <Pressable
+                        onPress={() => finish(null)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Omitir video"
+                        hitSlop={8}
+                        style={({ pressed }) => pressed && styles.roundBtnPressed}>
+                        <Text style={styles.skip}>Omitir</Text>
+                      </Pressable>
+                    )
+                  )}
+                </View>
+              </View>
             </View>
           </>
         ) : (
-          <PermissionPrompt
-            canAsk={permission?.canAskAgain ?? true}
-            onGrant={requestPermission}
-          />
+          <PermissionPrompt canAsk={permission?.canAskAgain ?? true} onGrant={requestPermission} />
         )}
       </View>
     </View>
   );
 }
 
+function StepChip({
+  label,
+  state,
+  children,
+}: {
+  label: string;
+  state: 'done' | 'active' | 'pending';
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={styles.stepItem}>
+      <View
+        style={[
+          styles.stepCircle,
+          state === 'active' && styles.stepActive,
+          state === 'done' && styles.stepDone,
+        ]}>
+        {children}
+      </View>
+      <Text
+        style={[styles.stepLabel, state === 'active' && styles.stepLabelActive]}
+        numberOfLines={1}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 function PermissionPrompt({ canAsk, onGrant }: { canAsk: boolean; onGrant: () => void }) {
   return (
-    <View style={styles.permWrap}>
+    <Reveal index={0} style={styles.permWrap}>
       <View style={styles.permIcon}>
         <Ionicons name="camera-outline" size={40} color={palette.white} />
       </View>
@@ -166,12 +337,15 @@ function PermissionPrompt({ canAsk, onGrant }: { canAsk: boolean; onGrant: () =>
         DENTA IA usa la cámara para analizar tu salud bucal. Las imágenes se procesan de forma
         segura.
       </Text>
-      <Pressable onPress={onGrant} style={styles.permBtn} disabled={!canAsk}>
-        <Text style={styles.permBtnText}>
-          {canAsk ? 'Permitir cámara' : 'Habilitá la cámara en Ajustes'}
-        </Text>
-      </Pressable>
-    </View>
+      <Button
+        label={canAsk ? 'Permitir cámara' : 'Habilitá la cámara en Ajustes'}
+        left={<Ionicons name="camera" size={20} color={palette.white} />}
+        onPress={onGrant}
+        disabled={!canAsk}
+        fullWidth={false}
+        style={styles.permBtn}
+      />
+    </Reveal>
   );
 }
 
@@ -194,6 +368,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  roundBtnPressed: { opacity: 0.6, backgroundColor: 'rgba(255,255,255,0.32)' },
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -208,6 +383,18 @@ const styles = StyleSheet.create({
   statusDivider: { width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.3)' },
   statusSub: { fontSize: 8, lineHeight: 10, color: '#5EEAD4', fontWeight: '700' },
 
+  recPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(239,68,68,0.9)',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: palette.white },
+  recText: { ...typography.small, color: palette.white, fontWeight: '800', letterSpacing: 1 },
+
   guideArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   guideHint: {
     position: 'absolute',
@@ -215,6 +402,8 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: palette.white,
     fontWeight: '600',
+    textAlign: 'center',
+    paddingHorizontal: spacing.xl,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowRadius: 4,
   },
@@ -265,6 +454,33 @@ const styles = StyleSheet.create({
   },
   progressFill: { height: '100%', borderRadius: radius.pill, backgroundColor: palette.teal },
 
+  controlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    marginTop: spacing.xl,
+  },
+  sideCol: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
+  sideColRight: { alignItems: 'flex-end' },
+  sideBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbs: { flexDirection: 'row', gap: 4 },
+  thumb: {
+    width: 32,
+    height: 40,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  skip: { ...typography.bodyStrong, color: 'rgba(255,255,255,0.8)' },
+
   shutterOuter: {
     width: 78,
     height: 78,
@@ -273,7 +489,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.xl,
   },
   shutterPressed: { transform: [{ scale: 0.94 }] },
   shutterInner: {
@@ -284,6 +499,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  recOuter: { borderColor: 'rgba(248,113,113,0.5)' },
+  recStart: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#EF4444' },
+  recStop: { width: 30, height: 30, borderRadius: 8, backgroundColor: '#EF4444' },
 
   permWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing['3xl'], gap: spacing.md },
   permIcon: {
@@ -297,12 +515,5 @@ const styles = StyleSheet.create({
   },
   permTitle: { ...typography.h2, color: palette.white, textAlign: 'center' },
   permDesc: { ...typography.body, color: 'rgba(255,255,255,0.7)', textAlign: 'center', maxWidth: 300 },
-  permBtn: {
-    marginTop: spacing.lg,
-    backgroundColor: palette.primary,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing['2xl'],
-    paddingVertical: spacing.lg,
-  },
-  permBtnText: { ...typography.subtitle, color: palette.white },
+  permBtn: { marginTop: spacing.lg },
 });

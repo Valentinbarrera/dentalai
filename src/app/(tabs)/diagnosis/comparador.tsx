@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandHeader } from '@/components/ui/brand-header';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Reveal } from '@/components/ui/reveal';
 import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
 import { TREATMENT_OPTIONS, TreatmentOption } from '@/lib/diagnosis';
 import { palette, radius, shadow, spacing, typography } from '@/theme/tokens';
@@ -21,26 +22,35 @@ export default function ComparadorScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <BrandHeader />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Pressable style={styles.eyebrowRow} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={16} color={palette.primary} />
-          <Text style={styles.eyebrow}>TREATMENT OPTIONS</Text>
-        </Pressable>
-        <Text style={styles.title}>Comparador de{'\n'}Tratamientos</Text>
-        <Text style={styles.subtitle}>
-          Análisis comparativo de opciones reconstructivas basado en tu diagnóstico IA. Evaluá
-          alternativas para tomar la mejor decisión clínica.
-        </Text>
+        <Reveal index={0}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Volver al diagnóstico"
+            hitSlop={8}
+            style={({ pressed }) => [styles.eyebrowRow, pressed && styles.eyebrowPressed]}
+            onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={16} color={palette.primary} />
+            <Text style={styles.eyebrow}>OPCIONES DE TRATAMIENTO</Text>
+          </Pressable>
+          <Text style={styles.title}>Comparador de{'\n'}Tratamientos</Text>
+          <Text style={styles.subtitle}>
+            Análisis comparativo de opciones reconstructivas basado en tu diagnóstico IA. Evaluá
+            alternativas para tomar la mejor decisión clínica.
+          </Text>
+        </Reveal>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={CARD_W + GAP}
-          decelerationRate="fast"
-          contentContainerStyle={styles.carousel}>
-          {TREATMENT_OPTIONS.map((opt) => (
-            <TreatmentCard key={opt.id} opt={opt} />
-          ))}
-        </ScrollView>
+        <Reveal index={1}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={CARD_W + GAP}
+            decelerationRate="fast"
+            contentContainerStyle={styles.carousel}>
+            {TREATMENT_OPTIONS.map((opt) => (
+              <TreatmentCard key={opt.id} opt={opt} />
+            ))}
+          </ScrollView>
+        </Reveal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -117,7 +127,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.background },
   content: { paddingBottom: CONTENT_BOTTOM_INSET },
 
-  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.sm, paddingHorizontal: spacing.xl },
+  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.sm, paddingHorizontal: spacing.xl, alignSelf: 'flex-start' },
+  eyebrowPressed: { opacity: 0.6 },
   eyebrow: { ...typography.label, color: palette.primary },
   title: { ...typography.h1, color: palette.textPrimary, marginTop: spacing.sm, paddingHorizontal: spacing.xl },
   subtitle: { ...typography.body, color: palette.textSecondary, marginTop: spacing.sm, paddingHorizontal: spacing.xl },

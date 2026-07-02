@@ -28,7 +28,9 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "DentalAI usa la cámara para analizar tu salud bucal."
+          "cameraPermission": "DentalAI usa la cámara para analizar tu salud bucal.",
+          "microphonePermission": "DentalAI usa el micrófono al grabar el video de tu sonrisa.",
+          "recordAudioAndroid": true
         }
       ],
       [

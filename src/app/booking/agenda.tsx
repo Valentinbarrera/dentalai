@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
+import { PressableCard } from '@/components/ui/pressable-card';
+import { Reveal } from '@/components/ui/reveal';
 import { CALENDAR_DAYS, TIME_SLOTS, TimeSlot } from '@/lib/specialists';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
@@ -22,73 +24,106 @@ export default function AgendaScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.iconBtn}>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}>
           <Ionicons name="arrow-back" size={22} color={palette.primary} />
         </Pressable>
         <Text style={styles.logo}>DentalAI</Text>
-        <Pressable style={styles.iconBtn}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Notificaciones"
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}>
           <Ionicons name="notifications-outline" size={20} color={palette.primary} />
         </Pressable>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Reservar Turno</Text>
-        <Text style={styles.subtitle}>
-          Seleccioná la fecha y el horario para tu consulta del análisis IA.
-        </Text>
+        <Reveal index={0}>
+          <Text style={styles.title}>Reservar Turno</Text>
+          <Text style={styles.subtitle}>
+            Seleccioná la fecha y el horario para tu consulta del análisis IA.
+          </Text>
+        </Reveal>
 
         {/* Selector de mes */}
-        <View style={styles.monthBar}>
-          <Pressable style={styles.monthArrow}>
-            <Ionicons name="chevron-back" size={20} color={palette.textPrimary} />
-          </Pressable>
-          <Text style={styles.monthText}>Octubre 2023</Text>
-          <Pressable style={styles.monthArrow}>
-            <Ionicons name="chevron-forward" size={20} color={palette.textPrimary} />
-          </Pressable>
-        </View>
+        <Reveal index={1}>
+          <View style={styles.monthBar}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Mes anterior"
+              style={({ pressed }) => [styles.monthArrow, pressed && styles.monthArrowPressed]}>
+              <Ionicons name="chevron-back" size={20} color={palette.textPrimary} />
+            </Pressable>
+            <Text style={styles.monthText}>Octubre 2023</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Mes siguiente"
+              style={({ pressed }) => [styles.monthArrow, pressed && styles.monthArrowPressed]}>
+              <Ionicons name="chevron-forward" size={20} color={palette.textPrimary} />
+            </Pressable>
+          </View>
 
-        {/* Días */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daysRow}>
-          {CALENDAR_DAYS.map((d) => {
-            const active = d.id === day;
-            return (
-              <Pressable
-                key={d.id}
-                disabled={!d.available}
-                onPress={() => setDay(d.id)}
-                style={[styles.dayCard, active && styles.dayCardActive, !d.available && styles.dayDisabled]}>
-                <Text style={[styles.dayLabel, active && styles.dayTextActive]}>{d.day}</Text>
-                <Text style={[styles.dayNum, active && styles.dayTextActive]}>{d.date}</Text>
-                {d.available && <View style={[styles.dayDot, active && styles.dayDotActive]} />}
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+          {/* Días */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daysRow}>
+            {CALENDAR_DAYS.map((d) => {
+              const active = d.id === day;
+              return (
+                <PressableCard
+                  key={d.id}
+                  flat
+                  padded={false}
+                  disabled={!d.available}
+                  onPress={() => setDay(d.id)}
+                  accessibilityLabel={`${d.day} ${d.date}${d.available ? '' : ', no disponible'}`}
+                  accessibilityState={{ selected: active, disabled: !d.available }}
+                  style={[styles.dayCard, active && styles.dayCardActive, !d.available && styles.dayDisabled] as ViewStyle[]}>
+                  <Text style={[styles.dayLabel, active && styles.dayTextActive]}>{d.day}</Text>
+                  <Text style={[styles.dayNum, active && styles.dayTextActive]}>{d.date}</Text>
+                  {d.available && <View style={[styles.dayDot, active && styles.dayDotActive]} />}
+                </PressableCard>
+              );
+            })}
+          </ScrollView>
+        </Reveal>
 
         {/* Horarios */}
-        <View style={styles.slotsHeader}>
-          <Ionicons name="time-outline" size={18} color={palette.primary} />
-          <Text style={styles.slotsHeaderText}>Horarios Disponibles</Text>
-        </View>
+        <Reveal index={2}>
+          <View style={styles.slotsHeader}>
+            <Ionicons name="time-outline" size={18} color={palette.primary} />
+            <Text style={styles.slotsHeaderText}>Horarios Disponibles</Text>
+          </View>
 
-        <View style={styles.slotsGrid}>
-          {morning.map((t) => (
-            <SlotButton key={t.id} slot={t} selected={t.id === slot} onPress={() => setSlot(t.id)} />
-          ))}
-        </View>
+          {morning.length + afternoon.length === 0 ? (
+            <View style={styles.empty}>
+              <Ionicons name="calendar-clear-outline" size={40} color={palette.textMuted} />
+              <Text style={styles.emptyTitle}>Sin horarios disponibles</Text>
+              <Text style={styles.emptyText}>Probá con otra fecha para ver turnos libres.</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.slotsGrid}>
+                {morning.map((t) => (
+                  <SlotButton key={t.id} slot={t} selected={t.id === slot} onPress={() => setSlot(t.id)} />
+                ))}
+              </View>
 
-        <View style={styles.periodDivider}>
-          <View style={styles.periodLine} />
-          <Text style={styles.periodText}>TARDE</Text>
-          <View style={styles.periodLine} />
-        </View>
+              <View style={styles.periodDivider}>
+                <View style={styles.periodLine} />
+                <Text style={styles.periodText}>TARDE</Text>
+                <View style={styles.periodLine} />
+              </View>
 
-        <View style={styles.slotsGrid}>
-          {afternoon.map((t) => (
-            <SlotButton key={t.id} slot={t} selected={t.id === slot} onPress={() => setSlot(t.id)} />
-          ))}
-        </View>
+              <View style={styles.slotsGrid}>
+                {afternoon.map((t) => (
+                  <SlotButton key={t.id} slot={t} selected={t.id === slot} onPress={() => setSlot(t.id)} />
+                ))}
+              </View>
+            </>
+          )}
+        </Reveal>
       </ScrollView>
 
       {/* CTA fijo */}
@@ -106,16 +141,20 @@ export default function AgendaScreen() {
 function SlotButton({ slot, selected, onPress }: { slot: TimeSlot; selected: boolean; onPress: () => void }) {
   const full = slot.status === 'full';
   return (
-    <Pressable
+    <PressableCard
+      flat
+      padded={false}
       disabled={full}
       onPress={onPress}
-      style={[styles.slot, selected && styles.slotSelected, full && styles.slotFull]}>
+      accessibilityLabel={`Horario ${slot.label}${full ? ', lleno' : ''}`}
+      accessibilityState={{ selected, disabled: full }}
+      style={[styles.slot, selected && styles.slotSelected, full && styles.slotFull] as ViewStyle[]}>
       {selected && <Ionicons name="checkmark-circle" size={16} color={palette.white} />}
       <Text style={[styles.slotText, selected && styles.slotTextSelected, full && styles.slotTextFull]}>
         {slot.label}
       </Text>
       {full && <Text style={styles.fullTag}>Lleno</Text>}
-    </Pressable>
+    </PressableCard>
   );
 }
 
@@ -136,6 +175,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  iconBtnPressed: { opacity: 0.7, transform: [{ scale: 0.94 }] },
   logo: { ...typography.h2, fontSize: 20, color: palette.primary, fontWeight: '800' },
   content: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
 
@@ -153,7 +193,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginTop: spacing.xl,
   },
-  monthArrow: { padding: spacing.sm },
+  monthArrow: { padding: spacing.sm, borderRadius: radius.sm },
+  monthArrowPressed: { opacity: 0.6, backgroundColor: palette.surfaceAlt },
   monthText: { ...typography.subtitle, color: palette.textPrimary },
 
   daysRow: { gap: spacing.md, marginTop: spacing.lg, paddingRight: spacing.xl },
@@ -202,6 +243,16 @@ const styles = StyleSheet.create({
   periodDivider: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing['2xl'] },
   periodLine: { flex: 1, height: 1, backgroundColor: palette.border },
   periodText: { ...typography.caption, color: palette.textSecondary, fontWeight: '700', letterSpacing: 1 },
+
+  empty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing['3xl'],
+    marginTop: spacing.lg,
+  },
+  emptyTitle: { ...typography.subtitle, color: palette.textPrimary, marginTop: spacing.sm },
+  emptyText: { ...typography.caption, color: palette.textSecondary, textAlign: 'center' },
 
   ctaBar: {
     paddingHorizontal: spacing.xl,

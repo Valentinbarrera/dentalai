@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
+import { Reveal } from '@/components/ui/reveal';
 import { getSpecialist } from '@/lib/specialists';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
@@ -29,7 +30,7 @@ export default function RateScreen() {
   if (submitted) {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={styles.thanks}>
+        <Reveal index={0} style={styles.thanks}>
           <View style={styles.thanksIcon}>
             <Ionicons name="checkmark" size={40} color={palette.white} />
           </View>
@@ -38,7 +39,7 @@ export default function RateScreen() {
             Tu opinión ayuda a otros pacientes a elegir con confianza.
           </Text>
           <Button label="Listo" onPress={() => router.back()} style={{ marginTop: spacing.xl }} fullWidth={false} />
-        </View>
+        </Reveal>
       </SafeAreaView>
     );
   }
@@ -46,7 +47,11 @@ export default function RateScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.iconBtn}>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}>
           <Ionicons name="arrow-back" size={22} color={palette.primary} />
         </Pressable>
         <Text style={styles.headerTitle}>Calificar profesional</Text>
@@ -55,53 +60,76 @@ export default function RateScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* Profesional */}
-        <View style={styles.specialist}>
-          <LinearGradient colors={[palette.primary, palette.teal]} style={styles.avatar}>
-            <Ionicons name="person" size={28} color={palette.white} />
-          </LinearGradient>
-          <Text style={styles.name}>{s.name}</Text>
-          <Text style={styles.specialty}>{s.specialty}</Text>
-        </View>
-
-        <Text style={styles.question}>¿Cómo fue tu experiencia?</Text>
+        <Reveal index={0}>
+          <View style={styles.specialist}>
+            <LinearGradient colors={[palette.primary, palette.teal]} style={styles.avatar}>
+              <Ionicons name="person" size={28} color={palette.white} />
+            </LinearGradient>
+            <Text style={styles.name}>{s.name}</Text>
+            <Text style={styles.specialty}>{s.specialty}</Text>
+          </View>
+        </Reveal>
 
         {/* Estrellas */}
-        <View style={styles.stars}>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Pressable key={i} onPress={() => setRating(i)} hitSlop={6}>
-              <Ionicons
-                name={i <= rating ? 'star' : 'star-outline'}
-                size={40}
-                color={i <= rating ? palette.warning : palette.border}
-              />
-            </Pressable>
-          ))}
-        </View>
-        <Text style={styles.ratingLabel}>{LABELS[rating]}</Text>
+        <Reveal index={1}>
+          <Text style={styles.question}>¿Cómo fue tu experiencia?</Text>
+          <View style={styles.stars}>
+            {[1, 2, 3, 4, 5].map((i) => {
+              const on = i <= rating;
+              return (
+                <Pressable
+                  key={i}
+                  onPress={() => setRating(i)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Calificar con ${i} ${i === 1 ? 'estrella' : 'estrellas'}`}
+                  accessibilityState={{ selected: on }}
+                  style={({ pressed }) => (pressed ? styles.starPressed : undefined)}>
+                  <Ionicons
+                    name={on ? 'star' : 'star-outline'}
+                    size={40}
+                    color={on ? palette.warning : palette.border}
+                  />
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={styles.ratingLabel}>{LABELS[rating]}</Text>
+        </Reveal>
 
         {/* Aspectos */}
-        <Text style={styles.sectionLabel}>¿Qué destacarías?</Text>
-        <View style={styles.tags}>
-          {ASPECTS.map((t) => {
-            const active = tags.includes(t);
-            return (
-              <Pressable key={t} onPress={() => toggleTag(t)} style={[styles.tag, active && styles.tagActive]}>
-                <Text style={[styles.tagText, active && styles.tagTextActive]}>{t}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <Reveal index={2}>
+          <Text style={styles.sectionLabel}>¿Qué destacarías?</Text>
+          <View style={styles.tags}>
+            {ASPECTS.map((t) => {
+              const active = tags.includes(t);
+              return (
+                <Pressable
+                  key={t}
+                  onPress={() => toggleTag(t)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t}
+                  accessibilityState={{ selected: active }}
+                  style={({ pressed }) => [styles.tag, active && styles.tagActive, pressed && styles.tagPressed]}>
+                  <Text style={[styles.tagText, active && styles.tagTextActive]}>{t}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Reveal>
 
         {/* Comentario */}
-        <Text style={styles.sectionLabel}>Tu comentario (opcional)</Text>
-        <TextInput
-          value={comment}
-          onChangeText={setComment}
-          placeholder="Contá tu experiencia para ayudar a otros pacientes..."
-          placeholderTextColor={palette.textMuted}
-          multiline
-          style={styles.input}
-        />
+        <Reveal index={3}>
+          <Text style={styles.sectionLabel}>Tu comentario (opcional)</Text>
+          <TextInput
+            value={comment}
+            onChangeText={setComment}
+            placeholder="Contá tu experiencia para ayudar a otros pacientes..."
+            placeholderTextColor={palette.textMuted}
+            multiline
+            style={styles.input}
+          />
+        </Reveal>
       </ScrollView>
 
       <View style={[styles.ctaBar, { paddingBottom: insets.bottom + spacing.md }]}>
@@ -126,6 +154,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: palette.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  iconBtnPressed: { opacity: 0.7, transform: [{ scale: 0.94 }] },
   headerTitle: { ...typography.subtitle, color: palette.textPrimary },
   content: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl },
 
@@ -136,12 +165,14 @@ const styles = StyleSheet.create({
 
   question: { ...typography.subtitle, color: palette.textPrimary, textAlign: 'center', marginTop: spacing['2xl'] },
   stars: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm, marginTop: spacing.lg },
+  starPressed: { transform: [{ scale: 1.15 }] },
   ratingLabel: { ...typography.bodyStrong, color: palette.warning, textAlign: 'center', marginTop: spacing.md, minHeight: 22 },
 
   sectionLabel: { ...typography.bodyStrong, color: palette.textPrimary, marginTop: spacing['2xl'], marginBottom: spacing.md },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   tag: { borderRadius: radius.pill, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.surface, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   tagActive: { backgroundColor: palette.primarySoft, borderColor: palette.primary },
+  tagPressed: { opacity: 0.7 },
   tagText: { ...typography.caption, color: palette.textSecondary, fontWeight: '600' },
   tagTextActive: { color: palette.primary },
 

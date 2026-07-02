@@ -1,12 +1,14 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandHeader } from '@/components/ui/brand-header';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { PressableCard } from '@/components/ui/pressable-card';
+import { Reveal } from '@/components/ui/reveal';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
 type Method = { id: string; label: string; icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'] };
@@ -34,12 +36,15 @@ export default function PaymentScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <BrandHeader />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Resumen de Pago</Text>
-        <Text style={styles.subtitle}>
-          Revisá los detalles de tu turno y elegí un método de pago.
-        </Text>
+        <Reveal index={0}>
+          <Text style={styles.title}>Resumen de Pago</Text>
+          <Text style={styles.subtitle}>
+            Revisá los detalles de tu turno y elegí un método de pago.
+          </Text>
+        </Reveal>
 
         {/* Detalles del turno */}
+        <Reveal index={1}>
         <Card style={styles.card}>
           <Text style={styles.cardTitle}>Detalles del Turno</Text>
           <View style={styles.divider} />
@@ -63,25 +68,31 @@ export default function PaymentScreen() {
             </View>
           </View>
         </Card>
+        </Reveal>
 
         {/* Método de pago */}
+        <Reveal index={2}>
         <Card style={styles.card}>
           <Text style={styles.cardTitle}>Método de Pago</Text>
           <View style={styles.methodsGrid}>
             {METHODS.map((m) => {
               const active = m.id === method;
               return (
-                <Pressable
+                <PressableCard
                   key={m.id}
+                  flat
+                  padded={false}
                   onPress={() => setMethod(m.id)}
-                  style={[styles.method, active && styles.methodActive]}>
+                  accessibilityLabel={`Pagar con ${m.label}`}
+                  accessibilityState={{ selected: active }}
+                  style={[styles.method, active && styles.methodActive] as ViewStyle[]}>
                   <MaterialCommunityIcons
                     name={m.icon}
                     size={22}
                     color={active ? palette.primary : palette.textSecondary}
                   />
                   <Text style={[styles.methodLabel, active && styles.methodLabelActive]}>{m.label}</Text>
-                </Pressable>
+                </PressableCard>
               );
             })}
           </View>
@@ -99,7 +110,10 @@ export default function PaymentScreen() {
               </View>
               <Field label="Nombre del titular" placeholder="Juan Pérez" />
               <Text style={styles.formLabel}>Cuotas</Text>
-              <Pressable style={styles.select}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Seleccionar cuotas: Pago único"
+                style={({ pressed }) => [styles.select, pressed && styles.selectPressed]}>
                 <Text style={styles.selectText}>Pago único ($250.00)</Text>
                 <Ionicons name="chevron-down" size={18} color={palette.textSecondary} />
               </Pressable>
@@ -114,8 +128,10 @@ export default function PaymentScreen() {
             </View>
           )}
         </Card>
+        </Reveal>
 
         {/* Resumen de orden */}
+        <Reveal index={3}>
         <Card style={styles.card}>
           <Text style={styles.cardTitle}>Resumen de Orden</Text>
           {ORDER.map((o) => (
@@ -138,11 +154,12 @@ export default function PaymentScreen() {
           </View>
           <Button
             label="Pagar $250.00"
-            left={<Ionicons name="arrow-forward" size={18} color={palette.white} />}
+            left={<Ionicons name="lock-closed" size={16} color={palette.white} />}
             onPress={() => router.push('/booking/confirmation')}
             style={styles.payBtn}
           />
         </Card>
+        </Reveal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -251,6 +268,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
   },
+  selectPressed: { opacity: 0.85, borderColor: palette.primaryLight },
   selectText: { ...typography.body, color: palette.textPrimary },
   altNote: {
     flexDirection: 'row',

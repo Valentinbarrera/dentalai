@@ -2,11 +2,13 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { PressableCard } from '@/components/ui/pressable-card';
+import { Reveal } from '@/components/ui/reveal';
 import { getSpecialist, QUICK_SLOTS, REVIEWS, Review } from '@/lib/specialists';
 import { palette, radius, shadow, spacing, typography } from '@/theme/tokens';
 
@@ -28,14 +30,24 @@ export default function SpecialistProfileScreen() {
 
         {/* Botones overlay */}
         <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
-          <Pressable onPress={() => router.back()} style={styles.roundBtn}>
+          <Pressable
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Volver"
+            style={({ pressed }) => [styles.roundBtn, pressed && styles.roundBtnPressed]}>
             <Ionicons name="arrow-back" size={22} color={palette.primary} />
           </Pressable>
           <View style={styles.topRight}>
-            <Pressable style={styles.roundBtn}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Agregar a favoritos"
+              style={({ pressed }) => [styles.roundBtn, pressed && styles.roundBtnPressed]}>
               <Ionicons name="heart-outline" size={20} color={palette.danger} />
             </Pressable>
-            <Pressable style={styles.roundBtn}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Compartir perfil"
+              style={({ pressed }) => [styles.roundBtn, pressed && styles.roundBtnPressed]}>
               <Ionicons name="share-social-outline" size={20} color={palette.primary} />
             </Pressable>
           </View>
@@ -43,82 +55,100 @@ export default function SpecialistProfileScreen() {
 
         <View style={styles.body}>
           {/* Nombre + rating */}
-          <View style={styles.nameRow}>
-            <View style={styles.flex}>
-              <Text style={styles.name}>{s.name}</Text>
-              <Text style={styles.specialty}>Especialista en {s.specialty.split(' ')[0]}</Text>
-            </View>
-            <View style={styles.ratingBadge}>
-              <Ionicons name="star" size={14} color={palette.warning} />
-              <Text style={styles.ratingText}>
-                {s.rating.toFixed(1)} ({s.reviews})
-              </Text>
-            </View>
-          </View>
-
-          {/* Tags */}
-          <View style={styles.tags}>
-            {s.tags.map((t) => (
-              <View key={t} style={styles.tag}>
-                <Text style={styles.tagText}>{t}</Text>
+          <Reveal index={0}>
+            <View style={styles.nameRow}>
+              <View style={styles.flex}>
+                <Text style={styles.name}>{s.name}</Text>
+                <Text style={styles.specialty}>Especialista en {s.specialty.split(' ')[0]}</Text>
               </View>
-            ))}
-          </View>
+              <View style={styles.ratingBadge}>
+                <Ionicons name="star" size={14} color={palette.warning} />
+                <Text style={styles.ratingText}>
+                  {s.rating.toFixed(1)} ({s.reviews})
+                </Text>
+              </View>
+            </View>
+
+            {/* Tags */}
+            <View style={styles.tags}>
+              {s.tags.map((t) => (
+                <View key={t} style={styles.tag}>
+                  <Text style={styles.tagText}>{t}</Text>
+                </View>
+              ))}
+            </View>
+          </Reveal>
 
           {/* Stats */}
-          <Card style={styles.statsCard} flat>
-            <Stat icon="briefcase-outline" value={`${s.experienceYears} Años`} label="Experiencia" />
-            <View style={styles.statDivider} />
-            <Stat icon="school-outline" value={s.university} label="Egresada" />
-            <View style={styles.statDivider} />
-            <Stat icon="people-outline" value={s.patients} label="Pacientes" />
-          </Card>
+          <Reveal index={1}>
+            <Card style={styles.statsCard} flat>
+              <Stat icon="briefcase-outline" value={`${s.experienceYears} Años`} label="Experiencia" />
+              <View style={styles.statDivider} />
+              <Stat icon="school-outline" value={s.university} label="Egresada" />
+              <View style={styles.statDivider} />
+              <Stat icon="people-outline" value={s.patients} label="Pacientes" />
+            </Card>
+          </Reveal>
 
           {/* Sobre mí */}
-          <Text style={styles.sectionTitle}>Sobre mí</Text>
-          <Text style={styles.about}>{s.about}</Text>
+          <Reveal index={2}>
+            <Text style={styles.sectionTitle}>Sobre mí</Text>
+            <Text style={styles.about}>{s.about}</Text>
+          </Reveal>
 
           {/* Reseñas */}
-          <View style={styles.reviewsHeader}>
-            <Text style={styles.sectionTitle}>Reseñas</Text>
-            <Pressable>
-              <Text style={styles.link}>Ver todas</Text>
-            </Pressable>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.reviewsRow}>
-            {REVIEWS.map((r) => (
-              <ReviewCard key={r.id} r={r} />
-            ))}
-          </ScrollView>
-          <Button
-            label="Escribir una reseña"
-            variant="outline"
-            left={<Ionicons name="star-outline" size={18} color={palette.primary} />}
-            onPress={() => router.push(`/booking/rate?id=${s.id}`)}
-            style={styles.reviewBtn}
-          />
+          <Reveal index={3}>
+            <View style={styles.reviewsHeader}>
+              <Text style={styles.sectionTitle}>Reseñas</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Ver todas las reseñas">
+                <Text style={styles.link}>Ver todas</Text>
+              </Pressable>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.reviewsRow}>
+              {REVIEWS.map((r) => (
+                <ReviewCard key={r.id} r={r} />
+              ))}
+            </ScrollView>
+            <Button
+              label="Escribir una reseña"
+              variant="outline"
+              left={<Ionicons name="star-outline" size={18} color={palette.primary} />}
+              onPress={() => router.push(`/booking/rate?id=${s.id}`)}
+              style={styles.reviewBtn}
+            />
+          </Reveal>
 
           {/* Horarios */}
-          <Text style={styles.sectionTitle}>Horarios Disponibles</Text>
-          <Text style={styles.weekLabel}>Próxima semana</Text>
-          <View style={styles.slotsRow}>
-            {QUICK_SLOTS.map((q) => {
-              const active = q.id === slot;
-              return (
-                <Pressable
-                  key={q.id}
-                  onPress={() => setSlot(q.id)}
-                  style={[styles.slot, active && styles.slotActive]}>
-                  <Text style={[styles.slotDay, active && styles.slotTextActive]}>{q.day}</Text>
-                  <Text style={[styles.slotTime, active && styles.slotTextActive]}>{q.time}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <Pressable onPress={() => router.push('/booking/agenda')} style={styles.calendarBtn}>
-            <Ionicons name="calendar-outline" size={16} color={palette.primary} />
-            <Text style={styles.calendarBtnText}>Ver calendario completo</Text>
-          </Pressable>
+          <Reveal index={4}>
+            <Text style={styles.sectionTitle}>Horarios Disponibles</Text>
+            <Text style={styles.weekLabel}>Próxima semana</Text>
+            <View style={styles.slotsRow}>
+              {QUICK_SLOTS.map((q) => {
+                const active = q.id === slot;
+                return (
+                  <PressableCard
+                    key={q.id}
+                    onPress={() => setSlot(q.id)}
+                    flat
+                    padded={false}
+                    accessibilityLabel={`Horario ${q.day} ${q.time}`}
+                    accessibilityState={{ selected: active }}
+                    style={[styles.slot, active && styles.slotActive] as ViewStyle[]}>
+                    <Text style={[styles.slotDay, active && styles.slotTextActive]}>{q.day}</Text>
+                    <Text style={[styles.slotTime, active && styles.slotTextActive]}>{q.time}</Text>
+                  </PressableCard>
+                );
+              })}
+            </View>
+            <Pressable
+              onPress={() => router.push('/booking/agenda')}
+              accessibilityRole="button"
+              accessibilityLabel="Ver calendario completo"
+              style={({ pressed }) => [styles.calendarBtn, pressed && styles.calendarBtnPressed]}>
+              <Ionicons name="calendar-outline" size={16} color={palette.primary} />
+              <Text style={styles.calendarBtnText}>Ver calendario completo</Text>
+            </Pressable>
+          </Reveal>
         </View>
       </ScrollView>
 
@@ -196,6 +226,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  roundBtnPressed: { opacity: 0.7, transform: [{ scale: 0.94 }] },
 
   body: {
     backgroundColor: palette.background,
@@ -291,6 +322,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     marginTop: spacing.md,
   },
+  calendarBtnPressed: { opacity: 0.85, backgroundColor: palette.primarySoft },
   calendarBtnText: { ...typography.bodyStrong, color: palette.primary },
 
   ctaBar: {

@@ -13,7 +13,10 @@ export function BrandHeader() {
         </View>
         <Text style={styles.logo}>DentalAI</Text>
       </View>
-      <Pressable accessibilityLabel="Notificaciones" style={styles.bell}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Notificaciones"
+        style={({ pressed }) => [styles.bell, pressed && styles.bellPressed]}>
         <Ionicons name="notifications-outline" size={20} color={palette.primary} />
         <View style={styles.bellDot} />
       </Pressable>
@@ -47,6 +50,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  bellPressed: { opacity: 0.6 },
   bellDot: {
     position: 'absolute',
     top: 10,

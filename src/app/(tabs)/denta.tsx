@@ -1,14 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatBubble } from '@/components/denta/chat-bubble';
 import { Chip } from '@/components/denta/chip';
 import { ConfidenceMeter } from '@/components/denta/confidence-meter';
 import { DentaAvatar } from '@/components/denta/denta-avatar';
+import { BrandHeader } from '@/components/ui/brand-header';
 import { Button } from '@/components/ui/button';
+import { Reveal } from '@/components/ui/reveal';
 import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
 import {
   ChatMessage,
@@ -19,7 +21,7 @@ import {
   getDentaReply,
   nextMessageId,
 } from '@/lib/denta-responses';
-import { palette, radius, spacing, typography } from '@/theme/tokens';
+import { palette, spacing, typography } from '@/theme/tokens';
 
 const INITIAL_CONFIDENCE = 75;
 
@@ -49,48 +51,41 @@ export default function DentaScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.userAvatar}>
-            <Ionicons name="person" size={18} color={palette.primary} />
-          </View>
-          <Text style={styles.logo}>DentalAI</Text>
-        </View>
-        <Pressable accessibilityLabel="Notificaciones" style={styles.bell}>
-          <Ionicons name="notifications-outline" size={20} color={palette.primary} />
-        </Pressable>
-      </View>
+      <BrandHeader />
 
       <ScrollView
         ref={scrollRef}
         style={styles.flex}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}>
-        <ConfidenceMeter value={confidence} />
+        <Reveal index={0}>
+          <ConfidenceMeter value={confidence} />
+        </Reveal>
 
         {/* Hero */}
-        <View style={styles.hero}>
+        <Reveal index={1} style={styles.hero}>
           <DentaAvatar />
           <Text style={styles.heroTitle}>¡Hola! Soy DENTA IA</Text>
           <Text style={styles.heroSubtitle}>
             Tu asistente dental virtual. Estoy aquí para escucharte y guiarte hacia tu mejor
             sonrisa.
           </Text>
-        </View>
+        </Reveal>
 
         {/* Conversación */}
-        {messages.map((m) => (
-          <ChatBubble key={m.id} role={m.role} text={m.text} time={m.time} />
-        ))}
+        <Reveal index={2}>
+          {messages.map((m) => (
+            <ChatBubble key={m.id} role={m.role} text={m.text} time={m.time} />
+          ))}
+        </Reveal>
 
         {/* Chips de sugerencias */}
         {remaining.length > 0 && (
-          <View style={styles.chips}>
+          <Reveal index={3} style={styles.chips}>
             {remaining.map((s) => (
               <Chip key={s.id} label={s.label} onPress={() => handleChip(s)} />
             ))}
-          </View>
+          </Reveal>
         )}
       </ScrollView>
 
@@ -109,31 +104,6 @@ export default function DentaScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.background },
   flex: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: palette.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logo: { ...typography.h2, fontSize: 20, color: palette.primary, fontWeight: '800' },
-  bell: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: palette.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   content: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.sm,

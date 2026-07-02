@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandHeader } from '@/components/ui/brand-header';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Reveal } from '@/components/ui/reveal';
 import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
 import { BUDGET_ITEMS, BUDGET_SUMMARY, FINANCING_OPTIONS } from '@/lib/diagnosis';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
@@ -20,9 +21,12 @@ export default function PresupuestoScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <BrandHeader />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Detalle del Presupuesto</Text>
+        <Reveal index={0}>
+          <Text style={styles.title}>Detalle del Presupuesto</Text>
+        </Reveal>
 
         {/* Plan seleccionado */}
+        <Reveal index={1}>
         <Card style={styles.planCard}>
           <LinearGradient colors={['#0D9488', '#2563EB']} style={styles.planImg}>
             <MaterialCommunityIcons name="tooth" size={40} color="rgba(255,255,255,0.9)" />
@@ -39,8 +43,10 @@ export default function PresupuestoScreen() {
             </Text>
           </View>
         </Card>
+        </Reveal>
 
         {/* Desglose */}
+        <Reveal index={2}>
         <Card style={styles.card}>
           <Text style={styles.cardTitle}>Desglose del Presupuesto</Text>
           <View style={styles.divider} />
@@ -60,8 +66,10 @@ export default function PresupuestoScreen() {
             </View>
           ))}
         </Card>
+        </Reveal>
 
         {/* Resumen */}
+        <Reveal index={3}>
         <Card style={styles.card}>
           <Text style={styles.cardTitle}>Resumen</Text>
           <View style={styles.sumRow}>
@@ -78,8 +86,10 @@ export default function PresupuestoScreen() {
             <Text style={styles.totalValue}>{BUDGET_SUMMARY.total}</Text>
           </View>
         </Card>
+        </Reveal>
 
         {/* Financiamiento */}
+        <Reveal index={4}>
         <Card style={styles.card}>
           <Text style={styles.cardTitle}>Opciones de Financiamiento</Text>
           <View style={styles.financeList}>
@@ -88,8 +98,15 @@ export default function PresupuestoScreen() {
               return (
                 <Pressable
                   key={f.id}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={`${f.months}, ${f.monthly}, ${f.note}`}
                   onPress={() => setFinancing(f.id)}
-                  style={[styles.finance, active && styles.financeActive]}>
+                  style={({ pressed }) => [
+                    styles.finance,
+                    active && styles.financeActive,
+                    pressed && styles.pressed,
+                  ]}>
                   <Ionicons
                     name={active ? 'radio-button-on' : 'radio-button-off'}
                     size={20}
@@ -103,17 +120,24 @@ export default function PresupuestoScreen() {
             })}
           </View>
         </Card>
+        </Reveal>
 
-        <Button
-          label="Confirmar y Agendar"
-          left={<Ionicons name="checkmark-circle" size={18} color={palette.white} />}
-          onPress={() => router.push('/diagnosis/pago-opciones')}
-          style={styles.confirmBtn}
-        />
-        <Pressable onPress={() => router.push('/videos')} style={styles.videosLink}>
-          <Ionicons name="play-circle-outline" size={16} color={palette.primary} />
-          <Text style={styles.videosLinkText}>Ver videos educativos del tratamiento</Text>
-        </Pressable>
+        <Reveal index={5}>
+          <Button
+            label="Confirmar y Agendar"
+            left={<Ionicons name="checkmark-circle" size={18} color={palette.white} />}
+            onPress={() => router.push('/diagnosis/pago-opciones')}
+            style={styles.confirmBtn}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ver videos educativos del tratamiento"
+            onPress={() => router.push('/videos')}
+            style={({ pressed }) => [styles.videosLink, pressed && styles.pressed]}>
+            <Ionicons name="play-circle-outline" size={16} color={palette.primary} />
+            <Text style={styles.videosLinkText}>Ver videos educativos del tratamiento</Text>
+          </Pressable>
+        </Reveal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -170,6 +194,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   financeActive: { borderColor: palette.primary, backgroundColor: palette.primarySoft },
+  pressed: { opacity: 0.7 },
   financeText: { ...typography.body, color: palette.textSecondary, flex: 1 },
   financeStrong: { color: palette.textPrimary, fontWeight: '700' },
 
