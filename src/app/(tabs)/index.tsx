@@ -14,13 +14,15 @@ import { Reveal } from '@/components/ui/reveal';
 import { ScreenContainer } from '@/components/ui/screen-container';
 import { palette, radius, shadow, spacing, typography } from '@/theme/tokens';
 
+type MciName = keyof typeof MaterialCommunityIcons.glyphMap;
+
 const USER = { name: 'Juan', initials: 'JG', healthScore: 85 };
 
-const HEALTH_METRICS = [
-  { label: 'Higiene', value: 90 },
-  { label: 'Encías', value: 82 },
-  { label: 'Alineación', value: 78 },
-] as const;
+const HEALTH_METRICS: { label: string; value: number; icon: MciName; color: string }[] = [
+  { label: 'Higiene', value: 90, icon: 'toothbrush', color: palette.teal },
+  { label: 'Encías', value: 82, icon: 'heart-pulse', color: palette.primary },
+  { label: 'Alineación', value: 78, icon: 'vector-line', color: palette.warning },
+];
 
 /** Saludo según la hora del día. */
 function getGreeting(): string {
@@ -115,17 +117,36 @@ export default function HomeScreen() {
               </View>
               <Badge label="Óptimo" tone="success" />
             </View>
+
+            <View style={styles.trendRow}>
+              <Ionicons name="trending-up" size={14} color={palette.success} />
+              <Text style={styles.trendText}>
+                <Text style={styles.trendStrong}>+3 pts</Text> vs. mes anterior
+              </Text>
+            </View>
+
             <View style={styles.healthBody}>
-              <ProgressRing value={USER.healthScore} size={104} strokeWidth={10} caption="/ 100" />
+              <View style={styles.ringWrap}>
+                <View style={styles.ringGlow} pointerEvents="none" />
+                <ProgressRing value={USER.healthScore} size={104} strokeWidth={10} caption="/ 100" />
+              </View>
               <View style={styles.metricsCol}>
                 {HEALTH_METRICS.map((m) => (
-                  <MetricBar key={m.label} label={m.label} value={m.value} />
+                  <MetricBar key={m.label} {...m} />
                 ))}
               </View>
             </View>
+
+            <View style={styles.divider} />
             <View style={styles.healthFooter}>
-              <Ionicons name="time-outline" size={13} color={palette.textMuted} />
-              <Text style={styles.healthUpdated}>Actualizado hace 2 semanas</Text>
+              <View style={styles.linkRow}>
+                <Ionicons name="time-outline" size={13} color={palette.textMuted} />
+                <Text style={styles.healthUpdated}>Hace 2 semanas</Text>
+              </View>
+              <View style={styles.linkRow}>
+                <Text style={styles.link}>Ver reporte</Text>
+                <Ionicons name="arrow-forward" size={15} color={palette.primary} />
+              </View>
             </View>
           </PressableCard>
         </Reveal>
@@ -133,7 +154,8 @@ export default function HomeScreen() {
         {/* Último Diagnóstico */}
         <Reveal index={4}>
           <InfoCard
-            icon={<MaterialCommunityIcons name="file-document-outline" size={20} color={palette.primary} />}
+            iconName="file-document-outline"
+            gradient={[palette.teal, palette.primary]}
             eyebrow="Último Diagnóstico"
             title="Revisión General"
             subtitle="Hace 2 semanas"
@@ -150,10 +172,11 @@ export default function HomeScreen() {
         {/* Próxima Cita */}
         <Reveal index={5}>
           <InfoCard
-            icon={<MaterialCommunityIcons name="calendar-clock" size={20} color={palette.primary} />}
+            iconName="calendar-clock"
+            gradient={[palette.primary, palette.navy]}
             eyebrow="Próxima Cita"
             title="Limpieza Ultrasónica"
-            subtitle="15 Nov, 10:30 AM"
+            subtitle="15 Nov · 10:30 AM"
             onPress={() => router.push('/schedule')}
             footer={
               <View style={styles.linkRow}>
@@ -176,14 +199,17 @@ export default function HomeScreen() {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.eduCard}>
+              <TextureGrid />
               <View style={styles.eduIcon}>
                 <Ionicons name="school" size={24} color={palette.white} />
               </View>
               <View style={styles.eduTextCol}>
                 <Text style={styles.eduTitle}>Videos Educativos</Text>
-                <Text style={styles.eduSub}>Aprendé sobre tratamientos y el Rincón de los Chicos 🧒</Text>
+                <Text style={styles.eduSub}>Tratamientos y el Rincón de los Chicos 🧒</Text>
               </View>
-              <Ionicons name="arrow-forward" size={20} color={palette.white} />
+              <View style={styles.eduArrow}>
+                <Ionicons name="arrow-forward" size={18} color={palette.white} />
+              </View>
             </LinearGradient>
           </Pressable>
         </Reveal>
@@ -196,23 +222,26 @@ export default function HomeScreen() {
           </View>
           <View style={styles.quickGrid}>
             <QuickAction
-              icon={<Ionicons name="camera-outline" size={24} color={palette.primary} />}
+              iconName="camera-outline"
+              gradient={[palette.teal, palette.primary]}
               label="Iniciar análisis"
               onPress={() => router.push('/analysis/tutorial')}
             />
             <QuickAction
-              icon={<MaterialCommunityIcons name="message-text-outline" size={24} color={palette.teal} />}
-              tint={palette.tealSoft}
+              iconName="robot-happy-outline"
+              gradient={[palette.primary, palette.navy]}
               label="Hablar con DENTA"
               onPress={() => router.push('/denta')}
             />
             <QuickAction
-              icon={<MaterialCommunityIcons name="medical-bag" size={24} color={palette.primary} />}
+              iconName="medical-bag"
+              gradient={[palette.teal, palette.tealDark]}
               label="Ver tratamientos"
               onPress={() => router.push('/diagnosis')}
             />
             <QuickAction
-              icon={<Ionicons name="calendar-outline" size={24} color={palette.primary} />}
+              iconName="calendar-outline"
+              gradient={[palette.primary, palette.primaryDark]}
               label="Reservar turno"
               onPress={() => router.push('/schedule')}
             />
@@ -225,7 +254,7 @@ export default function HomeScreen() {
 
 /* ---------------- Sub-componentes locales ---------------- */
 
-/** Textura de puntos sutil para la banda de marca. */
+/** Textura de puntos sutil para superficies con gradiente de marca. */
 function TextureGrid() {
   return (
     <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -277,8 +306,18 @@ function HeroMascot() {
   );
 }
 
-/** Mini barra de sub-métrica con relleno animado al entrar. */
-function MetricBar({ label, value }: { label: string; value: number }) {
+/** Mini barra de sub-métrica con ícono, color por métrica y relleno animado. */
+function MetricBar({
+  label,
+  value,
+  icon,
+  color,
+}: {
+  label: string;
+  value: number;
+  icon: MciName;
+  color: string;
+}) {
   const clamped = Math.max(0, Math.min(100, value));
   const w = useRef(new Animated.Value(0)).current;
 
@@ -297,9 +336,10 @@ function MetricBar({ label, value }: { label: string; value: number }) {
 
   return (
     <View style={styles.metricRow}>
+      <MaterialCommunityIcons name={icon} size={14} color={color} style={styles.metricIcon} />
       <Text style={styles.metricLabel}>{label}</Text>
       <View style={styles.metricTrack}>
-        <Animated.View style={[styles.metricFill, { width }]} />
+        <Animated.View style={[styles.metricFill, { width, backgroundColor: color }]} />
       </View>
       <Text style={styles.metricValue}>{value}</Text>
     </View>
@@ -307,14 +347,16 @@ function MetricBar({ label, value }: { label: string; value: number }) {
 }
 
 function InfoCard({
-  icon,
+  iconName,
+  gradient,
   eyebrow,
   title,
   subtitle,
   footer,
   onPress,
 }: {
-  icon: React.ReactNode;
+  iconName: MciName;
+  gradient: readonly [string, string];
   eyebrow: string;
   title: string;
   subtitle: string;
@@ -323,26 +365,36 @@ function InfoCard({
 }) {
   return (
     <PressableCard onPress={onPress} style={styles.infoCard}>
-      <View style={styles.infoHeader}>
-        <View style={styles.infoIcon}>{icon}</View>
-        <Text style={styles.infoEyebrow}>{eyebrow}</Text>
+      <View style={styles.infoRow}>
+        <LinearGradient
+          colors={gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.infoIconGrad}>
+          <MaterialCommunityIcons name={iconName} size={22} color={palette.white} />
+        </LinearGradient>
+        <View style={styles.infoTextCol}>
+          <Text style={styles.infoEyebrow}>{eyebrow}</Text>
+          <Text style={styles.infoTitle}>{title}</Text>
+          <Text style={styles.infoSubtitle}>{subtitle}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={palette.textMuted} />
       </View>
-      <Text style={styles.infoTitle}>{title}</Text>
-      <Text style={styles.infoSubtitle}>{subtitle}</Text>
+      <View style={styles.divider} />
       <View style={styles.infoFooter}>{footer}</View>
     </PressableCard>
   );
 }
 
 function QuickAction({
-  icon,
+  iconName,
+  gradient,
   label,
-  tint = palette.primarySoft,
   onPress,
 }: {
-  icon: React.ReactNode;
+  iconName: MciName;
+  gradient: readonly [string, string];
   label: string;
-  tint?: string;
   onPress: () => void;
 }) {
   return (
@@ -351,7 +403,13 @@ function QuickAction({
       accessibilityRole="button"
       accessibilityLabel={label}
       style={({ pressed }) => [styles.quickTile, shadow.card, pressed && styles.pressed]}>
-      <View style={[styles.quickIcon, { backgroundColor: tint }]}>{icon}</View>
+      <LinearGradient
+        colors={gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.quickIcon}>
+        <MaterialCommunityIcons name={iconName} size={24} color={palette.white} />
+      </LinearGradient>
       <Text style={styles.quickLabel}>{label}</Text>
     </Pressable>
   );
@@ -490,6 +548,7 @@ const styles = StyleSheet.create({
 
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   accentBar: { width: 4, height: 18, borderRadius: radius.pill, backgroundColor: palette.teal },
+  divider: { height: 1, backgroundColor: palette.border, marginVertical: spacing.md },
 
   /* Salud Dental (cockpit) */
   healthCard: { marginTop: spacing.lg, paddingVertical: spacing.xl },
@@ -499,15 +558,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardHeading: { ...typography.subtitle, color: palette.textPrimary },
+  trendRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: spacing.sm },
+  trendText: { ...typography.caption, color: palette.textSecondary },
+  trendStrong: { color: palette.success, fontWeight: '700' },
   healthBody: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xl,
     marginTop: spacing.lg,
   },
+  ringWrap: { alignItems: 'center', justifyContent: 'center' },
+  ringGlow: {
+    position: 'absolute',
+    width: 116,
+    height: 116,
+    borderRadius: 58,
+    backgroundColor: palette.tealSoft,
+  },
   metricsCol: { flex: 1, gap: spacing.md },
   metricRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  metricLabel: { ...typography.caption, color: palette.textSecondary, width: 74 },
+  metricIcon: { width: 18, textAlign: 'center' },
+  metricLabel: { ...typography.caption, color: palette.textSecondary, width: 62 },
   metricTrack: {
     flex: 1,
     height: 7,
@@ -515,11 +586,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.border,
     overflow: 'hidden',
   },
-  metricFill: {
-    height: '100%',
-    borderRadius: radius.pill,
-    backgroundColor: palette.primary,
-  },
+  metricFill: { height: '100%', borderRadius: radius.pill },
   metricValue: {
     ...typography.caption,
     fontWeight: '700',
@@ -530,25 +597,31 @@ const styles = StyleSheet.create({
   healthFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    marginTop: spacing.lg,
+    justifyContent: 'space-between',
   },
   healthUpdated: { ...typography.small, color: palette.textMuted },
 
+  /* Info cards */
   infoCard: { marginTop: spacing.lg },
-  infoHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  infoIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.sm,
-    backgroundColor: palette.primarySoft,
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  infoIconGrad: {
+    width: 46,
+    height: 46,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  infoEyebrow: { ...typography.caption, color: palette.textSecondary, fontWeight: '600' },
-  infoTitle: { ...typography.subtitle, color: palette.textPrimary, marginTop: spacing.md },
+  infoTextCol: { flex: 1 },
+  infoEyebrow: {
+    ...typography.small,
+    color: palette.textMuted,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  infoTitle: { ...typography.subtitle, color: palette.textPrimary, marginTop: 2 },
   infoSubtitle: { ...typography.caption, color: palette.textSecondary, marginTop: 2 },
-  infoFooter: { marginTop: spacing.md },
+  infoFooter: {},
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   link: { ...typography.bodyStrong, color: palette.primary },
   locationText: { ...typography.caption, color: palette.textSecondary, fontWeight: '600' },
@@ -562,6 +635,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { ...typography.h2, fontSize: 20, color: palette.textPrimary },
 
+  /* Educación */
   eduCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -569,18 +643,29 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     padding: spacing.lg,
     marginTop: spacing.lg,
+    overflow: 'hidden',
   },
   eduIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: 'rgba(255,255,255,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   eduTextCol: { flex: 1 },
   eduTitle: { ...typography.subtitle, color: palette.white },
   eduSub: { ...typography.caption, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
+  eduArrow: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  /* Acceso rápido */
   quickGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
