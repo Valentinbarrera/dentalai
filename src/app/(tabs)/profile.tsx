@@ -10,6 +10,8 @@ import { Card } from '@/components/ui/card';
 import { GradientIcon } from '@/components/ui/gradient-icon';
 import { Reveal } from '@/components/ui/reveal';
 import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
+import { ROUTES } from '@/lib/routes';
+import { session } from '@/lib/session';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
 type Row = {
@@ -34,7 +36,16 @@ export default function ProfileScreen() {
   const app: Row[] = [
     { id: 'help', icon: 'help-circle-outline', label: 'Ayuda y soporte', gradient: [palette.teal, palette.primary] },
     { id: 'privacy', icon: 'lock-closed-outline', label: 'Privacidad y seguridad', gradient: [palette.primary, palette.navy] },
-    { id: 'logout', icon: 'log-out-outline', label: 'Cerrar sesión', danger: true },
+    {
+      id: 'logout',
+      icon: 'log-out-outline',
+      label: 'Cerrar sesión',
+      danger: true,
+      onPress: () => {
+        session.authed = false;
+        router.replace(ROUTES.login);
+      },
+    },
   ];
 
   return (

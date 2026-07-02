@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { GradientIcon } from '@/components/ui/gradient-icon';
 import { Reveal } from '@/components/ui/reveal';
+import { ROUTES } from '@/lib/routes';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
 export default function ConfirmationScreen() {
@@ -16,7 +17,7 @@ export default function ConfirmationScreen() {
 
   const goHome = () => {
     if (router.canDismiss()) router.dismissAll();
-    router.navigate('/');
+    router.navigate(ROUTES.home);
   };
 
   return (

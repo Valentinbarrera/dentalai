@@ -17,7 +17,7 @@ type TabConfig = {
 
 // Mapa por nombre de ruta del grupo (tabs)
 const TABS: Record<string, TabConfig> = {
-  index: { label: 'Home', lib: 'ion', icon: 'home-outline', iconActive: 'home' },
+  home: { label: 'Home', lib: 'ion', icon: 'home-outline', iconActive: 'home' },
   diagnosis: { label: 'Diagnóstico', lib: 'mci', icon: 'tooth-outline', iconActive: 'tooth' },
   denta: { label: 'DENTA', lib: 'mci', icon: 'robot-happy', center: true },
   schedule: { label: 'Turnos', lib: 'ion', icon: 'calendar-outline', iconActive: 'calendar' },
