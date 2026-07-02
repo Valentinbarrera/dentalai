@@ -2,8 +2,10 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle as SvgCircle, Defs, Pattern, Rect } from 'react-native-svg';
 
 import { Badge } from '@/components/ui/badge';
 import { PressableCard } from '@/components/ui/pressable-card';
@@ -43,9 +45,10 @@ export default function HomeScreen() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.band, { paddingTop: insets.top + spacing.lg }]}>
-        {/* Blobs decorativos */}
+        {/* Blobs decorativos + textura de puntos */}
         <View style={styles.blobA} pointerEvents="none" />
         <View style={styles.blobB} pointerEvents="none" />
+        <TextureGrid />
 
         {/* Marca + notificaciones */}
         <Reveal index={0}>
@@ -222,11 +225,51 @@ export default function HomeScreen() {
 
 /* ---------------- Sub-componentes locales ---------------- */
 
-/** Mascota DENTA con glow, sobre la banda de marca. */
+/** Textura de puntos sutil para la banda de marca. */
+function TextureGrid() {
+  return (
+    <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Defs>
+        <Pattern id="dots" width={22} height={22} patternUnits="userSpaceOnUse">
+          <SvgCircle cx={2} cy={2} r={1.4} fill="rgba(255,255,255,0.55)" />
+        </Pattern>
+      </Defs>
+      <Rect width="100%" height="100%" fill="url(#dots)" opacity={0.1} />
+    </Svg>
+  );
+}
+
+/** Mascota DENTA con glow que respira, sobre la banda de marca. */
 function HeroMascot() {
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 1600,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 1600,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+
+  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] });
+  const opacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.5] });
+
   return (
     <View style={styles.mascotWrap}>
-      <View style={styles.mascotGlow} />
+      <Animated.View style={[styles.mascotGlow, { opacity, transform: [{ scale }] }]} />
       <View style={styles.mascotCircle}>
         <MaterialCommunityIcons name="robot-happy" size={34} color={palette.primary} />
       </View>
@@ -234,13 +277,29 @@ function HeroMascot() {
   );
 }
 
-/** Mini barra de sub-métrica para la tarjeta de salud. */
+/** Mini barra de sub-métrica con relleno animado al entrar. */
 function MetricBar({ label, value }: { label: string; value: number }) {
+  const clamped = Math.max(0, Math.min(100, value));
+  const w = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const a = Animated.timing(w, {
+      toValue: clamped,
+      duration: 900,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    });
+    a.start();
+    return () => a.stop();
+  }, [clamped, w]);
+
+  const width = w.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] });
+
   return (
     <View style={styles.metricRow}>
       <Text style={styles.metricLabel}>{label}</Text>
       <View style={styles.metricTrack}>
-        <View style={[styles.metricFill, { width: `${Math.max(0, Math.min(100, value))}%` }]} />
+        <Animated.View style={[styles.metricFill, { width }]} />
       </View>
       <Text style={styles.metricValue}>{value}</Text>
     </View>
