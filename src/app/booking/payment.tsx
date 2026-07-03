@@ -30,17 +30,33 @@ const ORDER = [
   { label: 'Impuestos y cargos', value: '$20.00' },
 ];
 
+const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+/** Formatea el ISO del turno a "24 Oct, 2023 • 14:30 hs" (sin Intl, para no depender de ICU). */
+function formatFechaHora(iso?: string): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${d.getDate()} ${MESES_CORTOS[d.getMonth()]}, ${d.getFullYear()} • ${hh}:${mm} hs`;
+}
+
 export default function PaymentScreen() {
   const router = useRouter();
   const [method, setMethod] = useState('card');
 
-  // Selección del turno (especialista + fecha/hora) que se reenvía a la confirmación.
-  const { specialistId, specialistName, specialistSubtitle, startsAt } = useLocalSearchParams<{
-    specialistId?: string;
-    specialistName?: string;
-    specialistSubtitle?: string;
-    startsAt?: string;
-  }>();
+  // Selección del turno (odontólogo real + fecha/hora) que se reenvía a la confirmación.
+  // `dentistId` es el id REAL del odontólogo (auth.users) — clave para que la
+  // confirmación pueda persistir el turno con la FK válida.
+  const { dentistId, specialistId, specialistName, specialistSubtitle, startsAt } =
+    useLocalSearchParams<{
+      dentistId?: string;
+      specialistId?: string;
+      specialistName?: string;
+      specialistSubtitle?: string;
+      startsAt?: string;
+    }>();
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
@@ -65,13 +81,15 @@ export default function PaymentScreen() {
             </GradientIcon>
             <View style={styles.flex}>
               <Text style={styles.apptName}>Examen y Limpieza IA Completo</Text>
-              <Text style={styles.apptSub}>Dra. Elena Santos • DentalAI Clínica Central</Text>
+              <Text style={styles.apptSub}>
+                {(specialistName ?? 'Profesional a asignar') + ' • DentalAI Clínica Central'}
+              </Text>
             </View>
           </View>
           <View style={styles.apptMetaBox}>
             <View style={styles.flex}>
               <Text style={styles.metaLabel}>FECHA Y HORA</Text>
-              <Text style={styles.metaValue}>24 Oct, 2023 • 10:00 AM</Text>
+              <Text style={styles.metaValue}>{formatFechaHora(startsAt) ?? 'A coordinar'}</Text>
             </View>
             <View style={styles.flex}>
               <Text style={styles.metaLabel}>DURACIÓN</Text>
@@ -175,7 +193,7 @@ export default function PaymentScreen() {
             onPress={() =>
               router.push({
                 pathname: '/booking/confirmation',
-                params: { specialistId, specialistName, specialistSubtitle, startsAt },
+                params: { dentistId, specialistId, specialistName, specialistSubtitle, startsAt },
               })
             }
             style={styles.payBtn}

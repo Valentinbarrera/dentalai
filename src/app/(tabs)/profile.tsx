@@ -23,9 +23,22 @@ type Row = {
   gradient?: readonly [string, string];
 };
 
+/** Iniciales a partir del nombre (2 letras: primera y última palabra). */
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
+
+  const fullName = ((user?.user_metadata?.full_name as string | undefined) ?? '').trim();
+  const displayName = fullName || 'Sin nombre';
+  const email = user?.email ?? '';
+  const initials = getInitials(displayName);
 
   const account: Row[] = [
     { id: 'edit', icon: 'person-outline', label: 'Editar perfil', gradient: [palette.teal, palette.primary] },
@@ -60,11 +73,11 @@ export default function ProfileScreen() {
         <Reveal index={0}>
           <Card style={styles.userCard}>
             <LinearGradient colors={[palette.primary, palette.teal]} style={styles.avatar}>
-              <Text style={styles.avatarText}>JG</Text>
+              <Text style={styles.avatarText}>{initials}</Text>
             </LinearGradient>
             <View style={styles.flex}>
-              <Text style={styles.userName}>Juan González</Text>
-              <Text style={styles.userMail}>juan.gonzalez@email.com</Text>
+              <Text style={styles.userName}>{displayName}</Text>
+              <Text style={styles.userMail}>{email}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={palette.textMuted} />
           </Card>

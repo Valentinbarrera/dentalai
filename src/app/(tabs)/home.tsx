@@ -8,21 +8,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Badge } from '@/components/ui/badge';
 import { PressableCard } from '@/components/ui/pressable-card';
-import { ProgressRing } from '@/components/ui/progress-ring';
 import { Reveal } from '@/components/ui/reveal';
 import { ScreenContainer } from '@/components/ui/screen-container';
 import { TextureGrid } from '@/components/ui/texture-grid';
+import { useMyAnalyses } from '@/features/analyses';
+import type { AnalysisStatus } from '@/features/analyses';
+import { usePatientAppointments } from '@/features/appointments';
+import { useAuth } from '@/features/auth';
 import { palette, radius, shadow, spacing, typography } from '@/theme/tokens';
 
 type MciName = keyof typeof MaterialCommunityIcons.glyphMap;
 
-const USER = { name: 'Juan', initials: 'JG', healthScore: 85 };
-
-const HEALTH_METRICS: { label: string; value: number; icon: MciName; color: string }[] = [
-  { label: 'Higiene', value: 90, icon: 'toothbrush', color: palette.teal },
-  { label: 'Encías', value: 82, icon: 'heart-pulse', color: palette.primary },
-  { label: 'Alineación', value: 78, icon: 'vector-line', color: palette.warning },
-];
+const MONTHS_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
 /** Saludo según la hora del día. */
 function getGreeting(): string {
@@ -33,9 +30,58 @@ function getGreeting(): string {
   return 'Buenas noches';
 }
 
+/** Fecha corta legible, ej. "3 jul 2026". Devuelve '' si el ISO es inválido. */
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getDate()} ${MONTHS_ES[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/** Fecha + hora, ej. "15 nov · 10:30". Devuelve '' si el ISO es inválido. */
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const hh = d.getHours().toString().padStart(2, '0');
+  const mm = d.getMinutes().toString().padStart(2, '0');
+  return `${d.getDate()} ${MONTHS_ES[d.getMonth()]} · ${hh}:${mm}`;
+}
+
+/** Etiqueta legible del estado de un análisis. */
+function analysisStatusLabel(status: AnalysisStatus): string {
+  switch (status) {
+    case 'subiendo':
+      return 'Subiendo capturas';
+    case 'procesando':
+      return 'Procesando análisis';
+    case 'listo':
+      return 'Diagnóstico listo';
+    case 'error':
+      return 'Análisis con error';
+  }
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  const { user } = useAuth();
+  const { analyses, loading: analysesLoading } = useMyAnalyses();
+  const { appointments, loading: appointmentsLoading } = usePatientAppointments(user?.id);
+
+  const fullName = ((user?.user_metadata?.full_name as string | undefined) ?? '').trim();
+  const firstName = fullName ? fullName.split(/\s+/)[0] : '';
+
+  // Los análisis vienen del más nuevo al más viejo (ver analyses-service).
+  const latestAnalysis = analyses[0] ?? null;
+  // Diagnóstico con resultado real (hoy `result` es null hasta que exista la IA).
+  const latestDiagnosis = analyses.find((a) => a.result) ?? null;
+
+  // Turnos ordenados asc: el primero a futuro y no cancelado es el próximo.
+  const now = Date.now();
+  const nextAppointment =
+    appointments.find(
+      (a) => a.status !== 'cancelado' && new Date(a.startsAt).getTime() >= now,
+    ) ?? null;
 
   return (
     <ScreenContainer scroll padded={false} edges={[]} background={palette.background}>
@@ -77,7 +123,7 @@ export default function HomeScreen() {
         {/* Saludo */}
         <Reveal index={1}>
           <Text style={styles.greetSmall}>{getGreeting()},</Text>
-          <Text style={styles.greetName}>Hola {USER.name} 👋</Text>
+          <Text style={styles.greetName}>{firstName ? `Hola ${firstName} 👋` : '¡Hola! 👋'}</Text>
         </Reveal>
 
         {/* DENTA IA */}
@@ -90,7 +136,7 @@ export default function HomeScreen() {
                 <Text style={styles.heroChipText}>ASISTENTE IA</Text>
               </View>
               <Text style={styles.heroTitle}>DENTA está listo para ayudarte</Text>
-              <Text style={styles.heroBody}>1 recomendación preventiva pendiente</Text>
+              <Text style={styles.heroBody}>Preguntale lo que quieras sobre tu salud bucal</Text>
             </View>
           </View>
 
@@ -107,84 +153,123 @@ export default function HomeScreen() {
 
       {/* ============ CUERPO ============ */}
       <View style={styles.body}>
-        {/* Salud Dental (cockpit) */}
+        {/* Salud Dental */}
         <Reveal index={3}>
-          <PressableCard onPress={() => router.push('/diagnosis')} style={styles.healthCard}>
-            <View style={styles.healthHeader}>
+          {analysesLoading ? (
+            <LoadingCard heading="Salud Dental" />
+          ) : latestDiagnosis?.result ? (
+            // Hay un diagnóstico real: mostramos datos reales del resultado.
+            <PressableCard onPress={() => router.push('/diagnosis')} style={styles.healthCard}>
+              <View style={styles.healthHeader}>
+                <View style={styles.headingRow}>
+                  <View style={styles.accentBar} />
+                  <Text style={styles.cardHeading}>Salud Dental</Text>
+                </View>
+                <Badge label="Listo" tone="success" />
+              </View>
+
+              <Text style={styles.healthReadyText}>
+                Tu último diagnóstico revisó {latestDiagnosis.result.affectedZones.length} zona
+                {latestDiagnosis.result.affectedZones.length === 1 ? '' : 's'}.
+              </Text>
+
+              <View style={styles.divider} />
+              <View style={styles.healthFooter}>
+                <View style={styles.linkRow}>
+                  <Ionicons name="time-outline" size={13} color={palette.textMuted} />
+                  <Text style={styles.healthUpdated}>{formatDate(latestDiagnosis.createdAt)}</Text>
+                </View>
+                <View style={styles.linkRow}>
+                  <Text style={styles.link}>Ver reporte</Text>
+                  <Ionicons name="arrow-forward" size={15} color={palette.primary} />
+                </View>
+              </View>
+            </PressableCard>
+          ) : (
+            // Sin diagnóstico todavía: estado vacío honesto con CTA al análisis.
+            <PressableCard onPress={() => router.push('/analysis/tutorial')} style={styles.healthCard}>
               <View style={styles.headingRow}>
                 <View style={styles.accentBar} />
                 <Text style={styles.cardHeading}>Salud Dental</Text>
               </View>
-              <Badge label="Óptimo" tone="success" />
-            </View>
-
-            <View style={styles.trendRow}>
-              <Ionicons name="trending-up" size={14} color={palette.success} />
-              <Text style={styles.trendText}>
-                <Text style={styles.trendStrong}>+3 pts</Text> vs. mes anterior
-              </Text>
-            </View>
-
-            <View style={styles.healthBody}>
-              <View style={styles.ringWrap}>
-                <View style={styles.ringGlow} pointerEvents="none" />
-                <ProgressRing value={USER.healthScore} size={104} strokeWidth={10} caption="/ 100" />
+              <View style={styles.healthEmptyBody}>
+                <View style={styles.healthEmptyIcon}>
+                  <MaterialCommunityIcons name="tooth-outline" size={30} color={palette.primary} />
+                </View>
+                <Text style={styles.healthEmptyTitle}>Todavía no tenés tu salud dental</Text>
+                <Text style={styles.healthEmptyText}>
+                  Hacé tu primer análisis para conocer tu diagnóstico y tu score.
+                </Text>
               </View>
-              <View style={styles.metricsCol}>
-                {HEALTH_METRICS.map((m) => (
-                  <MetricBar key={m.label} {...m} />
-                ))}
+              <View style={styles.emptyCtaRow}>
+                <Text style={styles.emptyCtaText}>Hacer mi primer análisis</Text>
+                <Ionicons name="arrow-forward" size={16} color={palette.white} />
               </View>
-            </View>
-
-            <View style={styles.divider} />
-            <View style={styles.healthFooter}>
-              <View style={styles.linkRow}>
-                <Ionicons name="time-outline" size={13} color={palette.textMuted} />
-                <Text style={styles.healthUpdated}>Hace 2 semanas</Text>
-              </View>
-              <View style={styles.linkRow}>
-                <Text style={styles.link}>Ver reporte</Text>
-                <Ionicons name="arrow-forward" size={15} color={palette.primary} />
-              </View>
-            </View>
-          </PressableCard>
+            </PressableCard>
+          )}
         </Reveal>
 
         {/* Último Diagnóstico */}
         <Reveal index={4}>
-          <InfoCard
-            iconName="file-document-outline"
-            gradient={[palette.teal, palette.primary]}
-            eyebrow="Último Diagnóstico"
-            title="Revisión General"
-            subtitle="Hace 2 semanas"
-            onPress={() => router.push('/diagnosis')}
-            footer={
-              <View style={styles.linkRow}>
-                <Text style={styles.link}>Ver reporte</Text>
-                <Ionicons name="arrow-forward" size={15} color={palette.primary} />
-              </View>
-            }
-          />
+          {analysesLoading ? (
+            <LoadingCard heading="Último Diagnóstico" />
+          ) : latestAnalysis ? (
+            <InfoCard
+              iconName="file-document-outline"
+              gradient={[palette.teal, palette.primary]}
+              eyebrow="Último Diagnóstico"
+              title={analysisStatusLabel(latestAnalysis.status)}
+              subtitle={formatDate(latestAnalysis.createdAt)}
+              onPress={() => router.push('/diagnosis')}
+              footer={
+                latestAnalysis.result ? (
+                  <View style={styles.linkRow}>
+                    <Text style={styles.link}>Ver reporte</Text>
+                    <Ionicons name="arrow-forward" size={15} color={palette.primary} />
+                  </View>
+                ) : (
+                  <View style={styles.linkRow}>
+                    <Ionicons name="hourglass-outline" size={14} color={palette.textMuted} />
+                    <Text style={styles.locationText}>Aún sin resultado</Text>
+                  </View>
+                )
+              }
+            />
+          ) : (
+            <EmptyCard
+              iconName="file-document-outline"
+              eyebrow="Último Diagnóstico"
+              message="Sin diagnósticos aún. Hacé tu primer análisis."
+            />
+          )}
         </Reveal>
 
         {/* Próxima Cita */}
         <Reveal index={5}>
-          <InfoCard
-            iconName="calendar-clock"
-            gradient={[palette.primary, palette.navy]}
-            eyebrow="Próxima Cita"
-            title="Limpieza Ultrasónica"
-            subtitle="15 Nov · 10:30 AM"
-            onPress={() => router.push('/schedule')}
-            footer={
-              <View style={styles.linkRow}>
-                <Ionicons name="location-outline" size={15} color={palette.textSecondary} />
-                <Text style={styles.locationText}>Clínica Centro</Text>
-              </View>
-            }
-          />
+          {appointmentsLoading ? (
+            <LoadingCard heading="Próxima Cita" />
+          ) : nextAppointment ? (
+            <InfoCard
+              iconName="calendar-clock"
+              gradient={[palette.primary, palette.navy]}
+              eyebrow="Próxima Cita"
+              title={nextAppointment.type}
+              subtitle={formatDateTime(nextAppointment.startsAt)}
+              onPress={() => router.push('/schedule')}
+              footer={
+                <View style={styles.linkRow}>
+                  <Ionicons name="time-outline" size={15} color={palette.textSecondary} />
+                  <Text style={styles.locationText}>{nextAppointment.durationMin} min</Text>
+                </View>
+              }
+            />
+          ) : (
+            <EmptyCard
+              iconName="calendar-clock"
+              eyebrow="Próxima Cita"
+              message="No tenés turnos. Reservá cuando quieras."
+            />
+          )}
         </Reveal>
 
         {/* Educación */}
@@ -292,42 +377,40 @@ function HeroMascot() {
   );
 }
 
-/** Mini barra de sub-métrica con ícono, color por métrica y relleno animado. */
-function MetricBar({
-  label,
-  value,
-  icon,
-  color,
-}: {
-  label: string;
-  value: number;
-  icon: MciName;
-  color: string;
-}) {
-  const clamped = Math.max(0, Math.min(100, value));
-  const w = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const a = Animated.timing(w, {
-      toValue: clamped,
-      duration: 900,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    });
-    a.start();
-    return () => a.stop();
-  }, [clamped, w]);
-
-  const width = w.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] });
-
+/** Card de carga neutra, mientras se leen los datos del backend. */
+function LoadingCard({ heading }: { heading: string }) {
   return (
-    <View style={styles.metricRow}>
-      <MaterialCommunityIcons name={icon} size={14} color={color} style={styles.metricIcon} />
-      <Text style={styles.metricLabel}>{label}</Text>
-      <View style={styles.metricTrack}>
-        <Animated.View style={[styles.metricFill, { width, backgroundColor: color }]} />
+    <View style={styles.emptyCard}>
+      <View style={styles.emptyIcon}>
+        <MaterialCommunityIcons name="progress-clock" size={22} color={palette.textMuted} />
       </View>
-      <Text style={styles.metricValue}>{value}</Text>
+      <View style={styles.infoTextCol}>
+        <Text style={styles.infoEyebrow}>{heading}</Text>
+        <Text style={styles.emptyMessage}>Cargando…</Text>
+      </View>
+    </View>
+  );
+}
+
+/** Estado vacío honesto para una tarjeta de información (sin datos reales). */
+function EmptyCard({
+  iconName,
+  eyebrow,
+  message,
+}: {
+  iconName: MciName;
+  eyebrow: string;
+  message: string;
+}) {
+  return (
+    <View style={styles.emptyCard}>
+      <View style={styles.emptyIcon}>
+        <MaterialCommunityIcons name={iconName} size={22} color={palette.textMuted} />
+      </View>
+      <View style={styles.infoTextCol}>
+        <Text style={styles.infoEyebrow}>{eyebrow}</Text>
+        <Text style={styles.emptyMessage}>{message}</Text>
+      </View>
     </View>
   );
 }
@@ -544,48 +627,67 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardHeading: { ...typography.subtitle, color: palette.textPrimary },
-  trendRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: spacing.sm },
-  trendText: { ...typography.caption, color: palette.textSecondary },
-  trendStrong: { color: palette.success, fontWeight: '700' },
-  healthBody: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xl,
-    marginTop: spacing.lg,
-  },
-  ringWrap: { alignItems: 'center', justifyContent: 'center' },
-  ringGlow: {
-    position: 'absolute',
-    width: 116,
-    height: 116,
-    borderRadius: 58,
-    backgroundColor: palette.tealSoft,
-  },
-  metricsCol: { flex: 1, gap: spacing.md },
-  metricRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  metricIcon: { width: 18, textAlign: 'center' },
-  metricLabel: { ...typography.caption, color: palette.textSecondary, width: 62 },
-  metricTrack: {
-    flex: 1,
-    height: 7,
-    borderRadius: radius.pill,
-    backgroundColor: palette.border,
-    overflow: 'hidden',
-  },
-  metricFill: { height: '100%', borderRadius: radius.pill },
-  metricValue: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: palette.textPrimary,
-    width: 24,
-    textAlign: 'right',
-  },
+  healthReadyText: { ...typography.body, color: palette.textSecondary, marginTop: spacing.md },
   healthFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   healthUpdated: { ...typography.small, color: palette.textMuted },
+
+  /* Salud Dental — estado vacío */
+  healthEmptyBody: { alignItems: 'center', marginTop: spacing.lg, gap: spacing.sm },
+  healthEmptyIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: palette.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  healthEmptyTitle: { ...typography.subtitle, color: palette.textPrimary, textAlign: 'center' },
+  healthEmptyText: {
+    ...typography.caption,
+    color: palette.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  emptyCtaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    alignSelf: 'stretch',
+    backgroundColor: palette.primary,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.md,
+    marginTop: spacing.lg,
+  },
+  emptyCtaText: { ...typography.bodyStrong, color: palette.white },
+
+  /* Tarjetas de estado vacío / carga (info) */
+  emptyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.lg,
+    backgroundColor: palette.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderStyle: 'dashed',
+    padding: spacing.lg,
+  },
+  emptyIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: radius.md,
+    backgroundColor: palette.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyMessage: { ...typography.caption, color: palette.textSecondary, marginTop: 2 },
 
   /* Info cards */
   infoCard: { marginTop: spacing.lg },

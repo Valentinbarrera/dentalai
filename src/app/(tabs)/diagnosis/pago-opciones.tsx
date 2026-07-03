@@ -1,19 +1,56 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandBand } from '@/components/ui/brand-band';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Reveal } from '@/components/ui/reveal';
+import { GradientIcon } from '@/components/ui/gradient-icon';
 import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
-import { PAYMENT_PLANS, PaymentPlan } from '@/lib/diagnosis';
+import { getAnalysis, type Analysis } from '@/features/analyses';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
 export default function PagoOpcionesScreen() {
   const router = useRouter();
+
+  // Los planes de pago dependen del presupuesto real del tratamiento elegido.
+  // Cargamos el análisis vía `analysisId`; sin datos reales NO mostramos planes
+  // ni montos inventados: caemos en un estado vacío honesto.
+  const { analysisId } = useLocalSearchParams<{ analysisId?: string }>();
+
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [loading, setLoading] = useState<boolean>(Boolean(analysisId));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!analysisId) return;
+    let cancelled = false;
+
+    setLoading(true);
+    setError(null);
+    getAnalysis(analysisId)
+      .then((a) => {
+        if (!cancelled) setAnalysis(a);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'No pudimos leer las opciones de pago.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [analysisId]);
+
+  // TODO(Fase 3): `DiagnosisResult` todavía NO trae planes de pago. La IA /
+  // presupuestador debe devolver un campo `paymentPlans` (derivado del `budget`
+  // del tratamiento elegido) para renderizar los planes reales acá. Hasta
+  // entonces no hay dato honesto que mostrar, así que siempre va el estado vacío.
+  const hasPlans = false;
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
@@ -25,86 +62,45 @@ export default function PagoOpcionesScreen() {
           onBack={() => router.back()}
         />
 
-        <View style={styles.body}>
-          <Reveal index={0}>
-            <View style={styles.intro}>
-              <View style={styles.eyebrowRow}>
-                <MaterialCommunityIcons name="cash-multiple" size={16} color={palette.primary} />
-                <Text style={styles.eyebrow}>MÉTODOS DE PAGO</Text>
-              </View>
-              <Text style={styles.subtitle}>
-                Elegí cómo querés pagar tu tratamiento dental seleccionado.
-              </Text>
-            </View>
-          </Reveal>
-
-          {PAYMENT_PLANS.map((p, i) => (
-            <Reveal key={p.id} index={i + 1}>
-              <PlanCard plan={p} onPress={() => router.push('/booking/agenda')} />
-            </Reveal>
-          ))}
-        </View>
+        {loading ? (
+          <View style={styles.stateWrap}>
+            <ActivityIndicator color={palette.primary} />
+            <Text style={styles.stateText}>Cargando opciones de pago…</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.stateWrap}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={28} color={palette.textMuted} />
+            <Text style={styles.stateText}>No pudimos cargar las opciones de pago.</Text>
+          </View>
+        ) : hasPlans ? null : (
+          <PagoEmpty hasAnalysis={Boolean(analysis)} />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function PlanCard({ plan, onPress }: { plan: PaymentPlan; onPress: () => void }) {
+/** Estado vacío honesto: todavía no hay planes de pago reales que mostrar. */
+function PagoEmpty({ hasAnalysis }: { hasAnalysis: boolean }) {
+  const router = useRouter();
   return (
-    <Card style={styles.card}>
-      <View style={styles.cardHead}>
-        <View style={styles.accentBar} />
-        <Text style={styles.cardTitle}>{plan.title}</Text>
-        {plan.highlight && (
-          <View style={styles.discountBadge}>
-            <Text style={styles.discountText}>{plan.highlight}</Text>
-          </View>
-        )}
-      </View>
-
-      {plan.total ? (
-        <>
-          <Text style={styles.investLabel}>Inversión Total:</Text>
-          <View style={styles.investRow}>
-            <Text style={styles.investValue}>{plan.total}</Text>
-            {plan.totalOld && <Text style={styles.investOld}>{plan.totalOld}</Text>}
-          </View>
-        </>
-      ) : (
-        <>
-          <Text style={styles.initialText}>
-            Pago Inicial: <Text style={styles.initialStrong}>{plan.initial}</Text>
-          </Text>
-          <SliderVisual />
-          <Text style={styles.monthlyText}>
-            Cuota Mensual: <Text style={styles.monthlyStrong}>{plan.monthly}</Text> ({plan.monthlyNote})
-          </Text>
-        </>
-      )}
-
+    <View style={styles.emptyState}>
+      <GradientIcon gradient={[palette.primary, palette.navy]} size={96} borderRadius={radius.xl}>
+        <MaterialCommunityIcons name="credit-card-outline" size={44} color={palette.white} />
+      </GradientIcon>
+      <Text style={styles.emptyTitle}>Todavía no hay opciones de pago</Text>
+      <Text style={styles.emptyDesc}>
+        {hasAnalysis
+          ? 'Cuando tengas un presupuesto calculado vas a ver acá los planes y las formas de pago disponibles.'
+          : 'Hacé tu análisis con IA para recibir un presupuesto y sus opciones de pago.'}
+      </Text>
       <Button
-        label={plan.cta}
-        variant={plan.primary ? 'outline' : 'primary'}
-        left={
-          plan.primary ? (
-            <Ionicons name="card-outline" size={18} color={palette.primary} />
-          ) : (
-            <Ionicons name="calculator-outline" size={18} color={palette.white} />
-          )
-        }
-        onPress={onPress}
-        style={styles.cardBtn}
+        label={hasAnalysis ? 'Ver mi diagnóstico' : 'Hacer mi análisis'}
+        left={<Ionicons name="scan-outline" size={18} color={palette.white} />}
+        onPress={() => router.push(hasAnalysis ? '/diagnosis' : '/analysis/tutorial')}
+        fullWidth={false}
+        style={styles.emptyCta}
       />
-    </Card>
-  );
-}
-
-/** Slider decorativo (posición fija) para ilustrar el pago inicial. */
-function SliderVisual({ progress = 0.4 }: { progress?: number }) {
-  return (
-    <View style={styles.sliderTrack}>
-      <View style={[styles.sliderFill, { width: `${progress * 100}%` }]} />
-      <View style={[styles.sliderThumb, { left: `${progress * 100}%` }]} />
     </View>
   );
 }
@@ -112,43 +108,25 @@ function SliderVisual({ progress = 0.4 }: { progress?: number }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.background },
   content: { paddingBottom: CONTENT_BOTTOM_INSET },
-  body: { paddingHorizontal: spacing.xl },
 
-  intro: { marginTop: spacing.lg },
-  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  eyebrow: { ...typography.label, color: palette.primary },
-  subtitle: { ...typography.body, color: palette.textSecondary, marginTop: spacing.xs },
+  // Estados de carga / error.
+  stateWrap: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing['3xl'] },
+  stateText: { ...typography.body, color: palette.textSecondary },
 
-  accentBar: { width: 4, height: 18, borderRadius: radius.pill, backgroundColor: palette.teal },
-
-  card: { marginTop: spacing.lg },
-  cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  cardTitle: { ...typography.h2, fontSize: 18, color: palette.textPrimary },
-  discountBadge: { backgroundColor: palette.successSoft, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 3 },
-  discountText: { ...typography.caption, color: palette.success, fontWeight: '700' },
-
-  investLabel: { ...typography.caption, color: palette.textSecondary, marginTop: spacing.md },
-  investRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, marginTop: 2 },
-  investValue: { ...typography.h1, color: palette.textPrimary },
-  investOld: { ...typography.body, color: palette.textMuted, textDecorationLine: 'line-through', marginBottom: 4 },
-
-  initialText: { ...typography.body, color: palette.textSecondary, marginTop: spacing.md },
-  initialStrong: { color: palette.textPrimary, fontWeight: '700' },
-  monthlyText: { ...typography.body, color: palette.textSecondary, marginTop: spacing.md },
-  monthlyStrong: { color: palette.primary, fontWeight: '700' },
-
-  sliderTrack: { height: 6, borderRadius: radius.pill, backgroundColor: palette.surfaceAlt, marginTop: spacing.md, justifyContent: 'center' },
-  sliderFill: { position: 'absolute', left: 0, height: 6, borderRadius: radius.pill, backgroundColor: palette.primary },
-  sliderThumb: {
-    position: 'absolute',
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: palette.white,
-    borderWidth: 3,
-    borderColor: palette.primary,
-    marginLeft: -9,
+  // Estado vacío honesto.
+  emptyState: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing['3xl'],
+    gap: spacing.md,
   },
-
-  cardBtn: { marginTop: spacing.lg },
+  emptyTitle: {
+    ...typography.h2,
+    fontSize: 20,
+    color: palette.textPrimary,
+    textAlign: 'center',
+    marginTop: spacing.lg,
+  },
+  emptyDesc: { ...typography.body, color: palette.textSecondary, textAlign: 'center', maxWidth: 320 },
+  emptyCta: { marginTop: spacing.lg },
 });

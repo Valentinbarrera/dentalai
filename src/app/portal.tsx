@@ -12,7 +12,13 @@ import { GradientIcon } from '@/components/ui/gradient-icon';
 import { PressableCard } from '@/components/ui/pressable-card';
 import { Reveal } from '@/components/ui/reveal';
 import { ScreenContainer } from '@/components/ui/screen-container';
-import { useDentistAppointments, type Appointment } from '@/features/appointments';
+import {
+  useDentistAppointments,
+  useDentistPatients,
+  type Appointment,
+  type AppointmentStatus,
+  type DentistPatient,
+} from '@/features/appointments';
 import { useAuth } from '@/features/auth';
 import { palette, radius, shadow, spacing, typography } from '@/theme/tokens';
 
@@ -27,12 +33,6 @@ type Appt = {
   primary?: boolean;
   scanReady?: boolean;
 };
-
-const APPTS: Appt[] = [
-  { id: 'a1', time: '09:00', dur: '45 min', name: 'Elena Rodríguez', tag: 'CONTROL', tagTone: 'teal', note: 'Control de rutina y limpieza.', primary: true },
-  { id: 'a2', time: '10:00', dur: '60 min', name: 'Martín Silva', tag: 'ENDODONCIA', tagTone: 'red', scanReady: true },
-  { id: 'a3', time: '11:30', dur: '30 min', name: 'Sofía Rossi', tag: 'CONSULTA', tagTone: 'neutral' },
-];
 
 /** Adapta un turno real de Supabase a la fila que consume la agenda del portal. */
 function toAppt(a: Appointment): Appt {
@@ -56,14 +56,66 @@ function toAppt(a: Appointment): Appt {
   };
 }
 
-type Patient = { id: string; name: string; when: string; initials: string; color: string; paid: boolean };
+type Patient = {
+  id: string;
+  name: string;
+  when: string;
+  initials: string;
+  color: string;
+  statusLabel: string;
+  statusTone: 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+};
 
-const PATIENTS: Patient[] = [
-  { id: 'p1', name: 'Laura G.', when: 'Hoy, 08:00', initials: 'LG', color: palette.teal, paid: true },
-  { id: 'p2', name: 'Carlos M.', when: 'Ayer', initials: 'CM', color: palette.primary, paid: false },
-  { id: 'p3', name: 'Ana P.', when: 'Ayer', initials: 'AP', color: palette.textSecondary, paid: true },
-  { id: 'p4', name: 'Jorge L.', when: 'Lun 12', initials: 'JL', color: palette.warning, paid: false },
-];
+/** Colores de avatar, rotados de forma estable por posición en la lista. */
+const AVATAR_COLORS = [palette.teal, palette.primary, palette.textSecondary, palette.warning];
+
+/** Estado del turno más reciente → etiqueta y tono de la pastilla. */
+const PATIENT_STATUS: Record<AppointmentStatus, { label: string; tone: Patient['statusTone'] }> = {
+  confirmado: { label: 'Confirmado', tone: 'success' },
+  completado: { label: 'Completado', tone: 'info' },
+  pendiente: { label: 'Pendiente', tone: 'warning' },
+  cancelado: { label: 'Cancelado', tone: 'danger' },
+};
+
+/** Iniciales (hasta 2) a partir del nombre del paciente. */
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  const letters = parts.slice(0, 2).map((p) => p.charAt(0).toUpperCase());
+  return letters.join('');
+}
+
+/** Fecha del último turno → texto relativo ("Hoy, 08:00", "Ayer", "Lun 12"). */
+function formatWhen(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const dayDiff = Math.round((startOf(now) - startOf(date)) / 86_400_000);
+
+  if (dayDiff === 0) {
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    return `Hoy, ${hh}:${mm}`;
+  }
+  if (dayDiff === 1) return 'Ayer';
+
+  const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  return `${days[date.getDay()]} ${date.getDate()}`;
+}
+
+/** Adapta un paciente real (derivado de sus turnos) a la fila de la lista. */
+function toPatientRow(p: DentistPatient, index: number): Patient {
+  const status = PATIENT_STATUS[p.lastStatus];
+  return {
+    id: p.id,
+    name: p.name,
+    when: formatWhen(p.lastVisitAt),
+    initials: initialsOf(p.name),
+    color: AVATAR_COLORS[index % AVATAR_COLORS.length],
+    statusLabel: status.label,
+    statusTone: status.tone,
+  };
+}
 
 const DAYS = [
   { id: 'd12', day: 'LUN', date: 12 },
@@ -82,10 +134,12 @@ export default function PortalScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
-  // Turnos reales del odontólogo desde Supabase (vía el feature, nunca directo).
+  // Turnos y pacientes reales del odontólogo desde Supabase (vía el feature, nunca directo).
   const { appointments } = useDentistAppointments(user?.id);
-  // Fallback al mock si no hay sesión o todavía no hay turnos reales (demo visual intacto).
-  const schedule: Appt[] = appointments.length > 0 ? appointments.map(toAppt) : APPTS;
+  const { patients } = useDentistPatients(user?.id);
+
+  const schedule: Appt[] = appointments.map(toAppt);
+  const patientRows: Patient[] = patients.map(toPatientRow);
 
   return (
     <ScreenContainer scroll padded={false} edges={[]} background={palette.background}>
@@ -200,7 +254,7 @@ export default function PortalScreen() {
             ) : (
               <EmptyState
                 icon="calendar-outline"
-                title="Sin turnos para hoy"
+                title="No tenés turnos agendados"
                 subtitle="Cuando agendes turnos, aparecerán acá."
               />
             )}
@@ -223,13 +277,13 @@ export default function PortalScreen() {
           </View>
 
           <Card style={styles.patientsCard}>
-            {PATIENTS.length > 0 ? (
+            {patientRows.length > 0 ? (
               <>
                 <View style={styles.patientsHead}>
                   <Text style={styles.patientsHeadText}>Paciente</Text>
                   <Text style={styles.patientsHeadText}>Estado</Text>
                 </View>
-                {PATIENTS.map((p) => (
+                {patientRows.map((p) => (
                   <View key={p.id} style={styles.patientRow}>
                     <View style={styles.patientLeft}>
                       <View style={[styles.patientAvatar, { backgroundColor: p.color }]}>
@@ -240,7 +294,7 @@ export default function PortalScreen() {
                         <Text style={styles.patientWhen}>{p.when}</Text>
                       </View>
                     </View>
-                    <Badge label={p.paid ? '● Pagado' : '● Pendiente'} tone={p.paid ? 'success' : 'danger'} />
+                    <Badge label={`● ${p.statusLabel}`} tone={p.statusTone} />
                   </View>
                 ))}
                 <Button label="Ver todos los pacientes" variant="outline" onPress={() => {}} style={styles.allBtn} />
@@ -248,8 +302,8 @@ export default function PortalScreen() {
             ) : (
               <EmptyState
                 icon="people-outline"
-                title="Todavía no hay pacientes"
-                subtitle="Los pacientes recientes se mostrarán en esta lista."
+                title="Todavía no tenés pacientes"
+                subtitle="Cuando agendes turnos, tus pacientes aparecerán acá."
               />
             )}
           </Card>

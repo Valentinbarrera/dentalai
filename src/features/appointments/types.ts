@@ -31,6 +31,22 @@ export type Appointment = {
   createdAt: string;
 };
 
+/**
+ * Un paciente del odontólogo, derivado de sus turnos.
+ * No es una entidad propia: se obtiene agrupando los turnos por paciente
+ * (pacientes distintos), tomando el turno más reciente de cada uno.
+ */
+export type DentistPatient = {
+  /** Usuario paciente (`auth.users.id`). */
+  id: string;
+  /** Nombre del paciente, traído por embed con `profiles`. */
+  name: string;
+  /** Fecha/hora de inicio del turno más reciente con este paciente, ISO 8601. */
+  lastVisitAt: string;
+  /** Estado del turno más reciente. */
+  lastStatus: AppointmentStatus;
+};
+
 /** Datos para crear un turno nuevo. El estado inicial lo pone la DB (`pendiente`). */
 export type CreateAppointmentInput = {
   patientId: string;

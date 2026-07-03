@@ -1,16 +1,19 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandBand } from '@/components/ui/brand-band';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { GradientIcon } from '@/components/ui/gradient-icon';
 import { Reveal } from '@/components/ui/reveal';
 import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
-import { TREATMENT_OPTIONS, TreatmentOption } from '@/lib/diagnosis';
+import { getAnalysis, type Analysis, type DiagnosisResult } from '@/features/analyses';
+import type { TreatmentOption } from '@/lib/diagnosis';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
 const CARD_W = Math.min(Dimensions.get('window').width * 0.82, 340);
@@ -18,6 +21,40 @@ const GAP = 16;
 
 export default function ComparadorScreen() {
   const router = useRouter();
+
+  // Las opciones de tratamiento provienen del diagnóstico real (Supabase) vía
+  // `analysisId`. Sin análisis real —o si aún no tiene `result`— mostramos un
+  // estado vacío honesto en vez de opciones ficticias.
+  const { analysisId } = useLocalSearchParams<{ analysisId?: string }>();
+
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [loading, setLoading] = useState<boolean>(Boolean(analysisId));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!analysisId) return;
+    let cancelled = false;
+
+    setLoading(true);
+    setError(null);
+    getAnalysis(analysisId)
+      .then((a) => {
+        if (!cancelled) setAnalysis(a);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'No pudimos leer el diagnóstico.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [analysisId]);
+
+  const result: DiagnosisResult | null = analysis?.result ?? null;
+  const options = result?.treatmentOptions ?? [];
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
@@ -29,37 +66,76 @@ export default function ComparadorScreen() {
           onBack={() => router.back()}
         />
 
-        <Reveal index={0}>
-          <View style={styles.intro}>
-            <View style={styles.headingRow}>
-              <View style={styles.accentBar} />
-              <Text style={styles.sectionTitle}>Elegí una alternativa</Text>
-            </View>
-            <Text style={styles.subtitle}>
-              Análisis comparativo de opciones reconstructivas basado en tu diagnóstico IA. Evaluá
-              alternativas para tomar la mejor decisión clínica.
-            </Text>
+        {loading ? (
+          <View style={styles.stateWrap}>
+            <ActivityIndicator color={palette.primary} />
+            <Text style={styles.stateText}>Cargando opciones…</Text>
           </View>
-        </Reveal>
+        ) : error ? (
+          <View style={styles.stateWrap}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={28} color={palette.textMuted} />
+            <Text style={styles.stateText}>No pudimos cargar las opciones.</Text>
+          </View>
+        ) : options.length > 0 ? (
+          <>
+            <Reveal index={0}>
+              <View style={styles.intro}>
+                <View style={styles.headingRow}>
+                  <View style={styles.accentBar} />
+                  <Text style={styles.sectionTitle}>Elegí una alternativa</Text>
+                </View>
+                <Text style={styles.subtitle}>
+                  Análisis comparativo de opciones reconstructivas basado en tu diagnóstico IA.
+                  Evaluá alternativas para tomar la mejor decisión clínica.
+                </Text>
+              </View>
+            </Reveal>
 
-        <Reveal index={1}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            snapToInterval={CARD_W + GAP}
-            decelerationRate="fast"
-            contentContainerStyle={styles.carousel}>
-            {TREATMENT_OPTIONS.map((opt) => (
-              <TreatmentCard key={opt.id} opt={opt} />
-            ))}
-          </ScrollView>
-        </Reveal>
+            <Reveal index={1}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                snapToInterval={CARD_W + GAP}
+                decelerationRate="fast"
+                contentContainerStyle={styles.carousel}>
+                {options.map((opt) => (
+                  <TreatmentCard key={opt.id} opt={opt} analysisId={analysisId} />
+                ))}
+              </ScrollView>
+            </Reveal>
+          </>
+        ) : (
+          <ComparadorEmpty />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function TreatmentCard({ opt }: { opt: TreatmentOption }) {
+/** Estado vacío honesto: no hay opciones de tratamiento reales que comparar. */
+function ComparadorEmpty() {
+  const router = useRouter();
+  return (
+    <View style={styles.emptyState}>
+      <GradientIcon gradient={[palette.primary, palette.navy]} size={96} borderRadius={radius.xl}>
+        <MaterialCommunityIcons name="tooth-outline" size={44} color={palette.white} />
+      </GradientIcon>
+      <Text style={styles.emptyTitle}>Todavía no hay opciones para comparar</Text>
+      <Text style={styles.emptyDesc}>
+        Hacé tu análisis con IA para ver las alternativas de tratamiento recomendadas para tu caso.
+      </Text>
+      <Button
+        label="Hacer mi análisis"
+        left={<Ionicons name="scan-outline" size={18} color={palette.white} />}
+        onPress={() => router.push('/analysis/tutorial')}
+        fullWidth={false}
+        style={styles.emptyCta}
+      />
+    </View>
+  );
+}
+
+function TreatmentCard({ opt, analysisId }: { opt: TreatmentOption; analysisId?: string }) {
   const router = useRouter();
   return (
     <Card style={styles.card} padded={false}>
@@ -96,7 +172,9 @@ function TreatmentCard({ opt }: { opt: TreatmentOption }) {
         <Button
           label="VER DETALLES"
           left={<Ionicons name="arrow-forward" size={18} color={palette.white} />}
-          onPress={() => router.push('/diagnosis/presupuesto')}
+          onPress={() =>
+            router.push({ pathname: '/diagnosis/presupuesto', params: analysisId ? { analysisId } : {} })
+          }
           style={styles.detailBtn}
         />
       </View>
@@ -186,4 +264,25 @@ const styles = StyleSheet.create({
   durValue: { ...typography.bodyStrong, color: palette.tealDark },
 
   detailBtn: { marginTop: spacing.lg },
+
+  // Estados de carga / error.
+  stateWrap: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing['3xl'] },
+  stateText: { ...typography.body, color: palette.textSecondary },
+
+  // Estado vacío honesto.
+  emptyState: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing['3xl'],
+    gap: spacing.md,
+  },
+  emptyTitle: {
+    ...typography.h2,
+    fontSize: 20,
+    color: palette.textPrimary,
+    textAlign: 'center',
+    marginTop: spacing.lg,
+  },
+  emptyDesc: { ...typography.body, color: palette.textSecondary, textAlign: 'center', maxWidth: 320 },
+  emptyCta: { marginTop: spacing.lg },
 });

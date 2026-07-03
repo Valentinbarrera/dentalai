@@ -8,7 +8,7 @@
  */
 import { supabase } from '@/services/supabase';
 
-import type { Appointment, AppointmentStatus, CreateAppointmentInput } from '../types';
+import type { Appointment, AppointmentStatus, CreateAppointmentInput, DentistPatient } from '../types';
 
 /** Perfil embebido del paciente (join con `public.profiles`). */
 type PatientEmbed = { full_name: string | null } | null;
@@ -70,8 +70,9 @@ function toAppointment(row: AppointmentRow): Appointment {
 /**
  * Turnos de un odontólogo, ordenados por fecha de inicio (asc).
  *
- * TODO(wiring): la agenda del odontólogo en `src/app/portal.tsx` (mock `APPTS`)
- * consumirá esto vía `useDentistAppointments(dentistId)` para reemplazar los datos hardcodeados.
+ * La agenda del portal (`src/app/portal.tsx`) lo consume vía
+ * `useDentistAppointments(dentistId)`, y `listPatientsForDentist` lo reutiliza
+ * para derivar la lista de pacientes.
  */
 export async function listForDentist(dentistId: string): Promise<Appointment[]> {
   // Intentamos traer el nombre del paciente con un embed a `profiles`.
@@ -95,6 +96,34 @@ export async function listForDentist(dentistId: string): Promise<Appointment[]> 
 
   if (fallback.error) throw new Error(fallback.error.message);
   return (fallback.data as AppointmentRow[] | null)?.map(toAppointment) ?? [];
+}
+
+/**
+ * Pacientes de un odontólogo, derivados de sus turnos.
+ *
+ * No hay tabla de pacientes: la lista sale de agrupar los turnos por paciente
+ * (distintos), quedándonos con el turno más reciente de cada uno. El nombre
+ * viene del mismo embed con `profiles` que usa `listForDentist`. Se ordena por
+ * visita más reciente primero (para la sección "Pacientes recientes").
+ */
+export async function listPatientsForDentist(dentistId: string): Promise<DentistPatient[]> {
+  // Reutilizamos la lectura de turnos (ya viene con el nombre embebido y
+  // ordenada asc por `starts_at`), y derivamos los pacientes distintos.
+  const appointments = await listForDentist(dentistId);
+
+  const byPatient = new Map<string, DentistPatient>();
+  for (const appt of appointments) {
+    // Como los turnos vienen en orden ascendente, cada iteración sobrescribe
+    // al anterior del mismo paciente → al final queda el más reciente.
+    byPatient.set(appt.patientId, {
+      id: appt.patientId,
+      name: appt.patientName ?? 'Paciente',
+      lastVisitAt: appt.startsAt,
+      lastStatus: appt.status,
+    });
+  }
+
+  return [...byPatient.values()].sort((a, b) => b.lastVisitAt.localeCompare(a.lastVisitAt));
 }
 
 /**

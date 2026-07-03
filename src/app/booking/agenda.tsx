@@ -35,8 +35,11 @@ export default function AgendaScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  // Especialista elegido en la pantalla anterior; se propaga para el DISPLAY del turno.
-  const { specialistId, specialistName, specialistSubtitle } = useLocalSearchParams<{
+  // Odontólogo elegido en la pantalla anterior. `dentistId` es el usuario real
+  // (auth.users) y se propaga para poder guardar el turno con una FK válida;
+  // specialistId/Name/Subtitle se propagan para el DISPLAY del turno.
+  const { dentistId, specialistId, specialistName, specialistSubtitle } = useLocalSearchParams<{
+    dentistId?: string;
     specialistId?: string;
     specialistName?: string;
     specialistSubtitle?: string;
@@ -149,6 +152,7 @@ export default function AgendaScreen() {
             router.push({
               pathname: '/booking/payment',
               params: {
+                dentistId,
                 specialistId,
                 specialistName,
                 specialistSubtitle,

@@ -1,8 +1,7 @@
 -- ============================================================
--- DentalAI · TODAS las migraciones (0001 → 0004) en un solo archivo
--- Pegar en Supabase → SQL Editor → Run (una sola vez).
+-- DentalAI · TODAS las migraciones (0001 → 0007) en un solo archivo
+-- Pegar en Supabase → SQL Editor → Run (idempotente, se puede re-correr).
 -- ============================================================
-
 
 -- >>>>>>>>>> 0001_profiles.sql <<<<<<<<<<
 -- ============================================================
@@ -253,4 +252,103 @@ create policy "credenciales propias: actualizar"
     bucket_id = 'credentials'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
+
+
+-- >>>>>>>>>> 0005_patient_visibility.sql <<<<<<<<<<
+-- ============================================================
+-- DentalAI · Migración 0005 — visibilidad del perfil del paciente
+-- Pegar en Supabase → SQL Editor → Run (una sola vez).
+-- ============================================================
+--
+-- Objetivo: que un odontólogo pueda leer el perfil básico (p. ej. `full_name`)
+-- de los pacientes que tienen un turno con él, para mostrar el NOMBRE REAL del
+-- paciente en la agenda del portal (`src/app/portal.tsx`).
+--
+-- Esta policy SE SUMA a "perfil propio: ver" (migración 0001); no la reemplaza.
+-- Con RLS, varias policies de SELECT se combinan con OR: cada usuario sigue
+-- viendo su propio perfil, y además el odontólogo ve el de sus pacientes.
+
+-- SELECT: el odontólogo ve el perfil de un paciente SOLO si existe un turno
+--         suyo (dentist_id = auth.uid()) con ese paciente (patient_id = profiles.id).
+drop policy if exists "perfil paciente: ver si tiene turno con el odontólogo" on public.profiles;
+create policy "perfil paciente: ver si tiene turno con el odontólogo"
+  on public.profiles for select
+  using (
+    exists (
+      select 1
+      from public.appointments a
+      where a.dentist_id = auth.uid()
+        and a.patient_id = profiles.id
+    )
+  );
+
+
+-- >>>>>>>>>> 0006_dentists.sql <<<<<<<<<<
+-- ============================================================
+-- DentalAI · Migración 0006 — odontólogos elegibles al reservar
+-- Pegar en Supabase → SQL Editor → Run (una sola vez).
+-- Requiere la migración 0001 (tabla public.profiles).
+-- ============================================================
+--
+-- Objetivo: que el flujo de booking del paciente muestre odontólogos REALES
+-- (los que se registraron con rol 'odontologo') en lugar de datos mock, y que
+-- al reservar se pueda propagar un `dentistId` real de `auth.users` como FK
+-- válida del turno.
+
+-- 1) Columna de especialidad del odontólogo (la elige/edita en su perfil).
+--    (Idempotente: no pisa lo existente.)
+alter table public.profiles add column if not exists specialty text;
+
+-- 2) SELECT: cualquier usuario autenticado puede leer los perfiles de
+--    odontólogos, para poder elegirlos al reservar un turno.
+--
+--    Esta policy SE SUMA a las existentes (migraciones 0001 y 0005); no las
+--    reemplaza. Con RLS, varias policies de SELECT se combinan con OR: cada
+--    usuario sigue viendo su propio perfil, el odontólogo ve el de sus
+--    pacientes, y además todos ven a los odontólogos disponibles.
+drop policy if exists "odontólogos: visibles para reservar" on public.profiles;
+create policy "odontólogos: visibles para reservar"
+  on public.profiles for select
+  to authenticated
+  using (role = 'odontologo');
+
+
+-- >>>>>>>>>> 0007_videos.sql <<<<<<<<<<
+-- ============================================================
+-- DentalAI · Migración 0007 — videos educativos
+-- Pegar en Supabase → SQL Editor → Run (una sola vez).
+-- ============================================================
+--
+-- Biblioteca de videos educativos, de lectura general para toda la app.
+-- Arranca VACÍA: el contenido real se carga después desde un panel/admin.
+-- Los usuarios comunes solo LEEN; no hay insert/update para ellos.
+
+-- 1) Tabla de videos.
+create table if not exists public.videos (
+  id             uuid primary key default gen_random_uuid(),
+  title          text not null,
+  description    text,
+  category       text,
+  thumbnail_url  text,
+  video_url      text,
+  duration       text,
+  created_at     timestamptz not null default now()
+);
+
+-- 2) Índice: la biblioteca se lista/agrupa por categoría y orden cronológico.
+create index if not exists videos_category_created_idx
+  on public.videos (category, created_at desc);
+
+-- 3) Row Level Security.
+alter table public.videos enable row level security;
+
+-- SELECT: contenido educativo de lectura general para cualquier usuario autenticado.
+drop policy if exists "videos: lectura pública para autenticados" on public.videos;
+create policy "videos: lectura pública para autenticados"
+  on public.videos for select
+  to authenticated
+  using (true);
+
+-- Nota: sin policies de insert/update/delete para usuarios comunes.
+-- La carga de contenido se hace por panel/admin (rol de servicio).
 

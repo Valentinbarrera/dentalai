@@ -5,9 +5,14 @@
  */
 export {
   listForDentist,
+  listPatientsForDentist,
   listForPatient,
   createAppointment,
   updateStatus,
 } from './services/appointments-service';
-export { useDentistAppointments, usePatientAppointments } from './hooks/use-appointments';
-export type { Appointment, AppointmentStatus, CreateAppointmentInput } from './types';
+export {
+  useDentistAppointments,
+  useDentistPatients,
+  usePatientAppointments,
+} from './hooks/use-appointments';
+export type { Appointment, AppointmentStatus, CreateAppointmentInput, DentistPatient } from './types';
