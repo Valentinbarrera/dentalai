@@ -22,6 +22,15 @@ export default function SpecialistProfileScreen() {
 
   const [slot, setSlot] = useState(QUICK_SLOTS[1].id);
 
+  // Datos del especialista mock que se propagan por el flujo de booking para el DISPLAY.
+  // TODO(Fase 4): mapear este especialista mock a un odontólogo real (auth.users) para
+  // poder mandar un `dentistId` real al guardado del turno.
+  const specialistParams = {
+    specialistId: s.id,
+    specialistName: s.name,
+    specialistSubtitle: `Especialista en ${s.specialty.split(' ')[0]}`,
+  };
+
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
@@ -152,7 +161,7 @@ export default function SpecialistProfileScreen() {
               })}
             </View>
             <Pressable
-              onPress={() => router.push('/booking/agenda')}
+              onPress={() => router.push({ pathname: '/booking/agenda', params: specialistParams })}
               accessibilityRole="button"
               accessibilityLabel="Ver calendario completo"
               style={({ pressed }) => [styles.calendarBtn, pressed && styles.calendarBtnPressed]}>
@@ -168,7 +177,7 @@ export default function SpecialistProfileScreen() {
         <Button
           label="Reservar turno"
           left={<Ionicons name="arrow-forward" size={18} color={palette.white} />}
-          onPress={() => router.push('/booking/agenda')}
+          onPress={() => router.push({ pathname: '/booking/agenda', params: specialistParams })}
         />
       </View>
     </View>

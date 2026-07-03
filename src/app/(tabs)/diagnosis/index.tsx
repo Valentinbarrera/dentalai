@@ -1,8 +1,9 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,7 @@ import { GradientIcon } from '@/components/ui/gradient-icon';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { Reveal } from '@/components/ui/reveal';
 import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
+import { getAnalysis, type Analysis } from '@/features/analyses';
 import { AFFECTED_ZONES, AffectedZone, Severity } from '@/lib/diagnosis';
 import { palette, radius, shadow, spacing, typography } from '@/theme/tokens';
 
@@ -24,6 +26,44 @@ const SEVERITY_COLOR: Record<Severity, string> = {
 
 export default function ResultsScreen() {
   const router = useRouter();
+
+  // El diagnóstico puede venir de un análisis real (guardado en Supabase) cuando
+  // `processing.tsx` navega con `analysisId`. Sin ese id (demo, sin IA todavía),
+  // la pantalla se comporta EXACTO que antes, con los mocks de `lib/diagnosis`.
+  const { analysisId } = useLocalSearchParams<{ analysisId?: string }>();
+
+  // Lectura siempre vía `@/features/analyses`; la UI nunca toca Supabase directo.
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [loading, setLoading] = useState<boolean>(Boolean(analysisId));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!analysisId) return;
+    let cancelled = false;
+
+    setLoading(true);
+    setError(null);
+    getAnalysis(analysisId)
+      .then((a) => {
+        if (!cancelled) setAnalysis(a);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'No pudimos leer el diagnóstico.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [analysisId]);
+
+  // Fuente de datos de las zonas: el resultado real si existe; si no, los mocks.
+  // (En error o mientras no hay `result`, degradamos al mock para el demo.)
+  const zones = analysis?.result?.affectedZones ?? AFFECTED_ZONES;
+  const zonesLoading = Boolean(analysisId) && loading;
+  const zonesError = Boolean(analysisId) && !loading && error !== null;
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
@@ -110,12 +150,22 @@ export default function ResultsScreen() {
               <View style={styles.accentBar} />
               <Text style={styles.sectionTitle}>Zonas Afectadas</Text>
             </View>
-            {AFFECTED_ZONES.length > 0 ? (
+            {zonesLoading ? (
+              <View style={styles.emptyZones}>
+                <ActivityIndicator color={palette.primary} />
+                <Text style={styles.emptyZonesText}>Cargando diagnóstico…</Text>
+              </View>
+            ) : zonesError ? (
+              <View style={styles.emptyZones}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={28} color={palette.textMuted} />
+                <Text style={styles.emptyZonesText}>No pudimos cargar el diagnóstico.</Text>
+              </View>
+            ) : zones.length > 0 ? (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.zonesRow}>
-                {AFFECTED_ZONES.map((z) => (
+                {zones.map((z) => (
                   <ZoneCard key={z.id} zone={z} />
                 ))}
               </ScrollView>

@@ -1,6 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect, useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,11 +10,74 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { GradientIcon } from '@/components/ui/gradient-icon';
 import { Reveal } from '@/components/ui/reveal';
+import { createAppointment } from '@/features/appointments';
+import { useAuth } from '@/features/auth';
 import { ROUTES } from '@/lib/routes';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
+const DIAS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const MESES_ES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
+/** Formatea el ISO string del turno a un texto legible en español.
+ *  Se hace a mano (sin Intl) para no depender del soporte de ICU en el runtime. */
+function formatFechaHora(iso?: string): { fecha: string; hora: string } | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const fecha = `${DIAS_ES[d.getDay()]}, ${d.getDate()} de ${MESES_ES[d.getMonth()]}`;
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return { fecha, hora: `${hh}:${mm} hs` };
+}
+
 export default function ConfirmationScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const savedRef = useRef(false);
+  // dentistId del profesional elegido. Llega por route params una vez que el flujo
+  // de booking trabaje con odontólogos reales (Fase 4).
+  //
+  // specialistId/Name/Subtitle son datos del especialista MOCK y se usan SOLO para el
+  // DISPLAY de esta pantalla. OJO: specialistId NO es un usuario real de Supabase, así
+  // que nunca se usa como `dentistId` en el guardado.
+  // TODO(Fase 4): mapear specialistId (mock) → dentistId real (auth.users) para poder
+  // persistir el turno con el odontólogo elegido.
+  const { dentistId, startsAt, specialistName, specialistSubtitle } = useLocalSearchParams<{
+    dentistId?: string;
+    startsAt?: string;
+    specialistId?: string;
+    specialistName?: string;
+    specialistSubtitle?: string;
+  }>();
+
+  // Fecha/hora reales elegidas, formateadas en español legible (o el fallback del mock).
+  const fecha = formatFechaHora(startsAt);
+
+  // Al llegar a esta pantalla la reserva ya quedó confirmada: persistimos el turno
+  // en Supabase (una sola vez) para que aparezca en la agenda del odontólogo.
+  //
+  // Requisito real: `appointments.dentist_id` es FK a `auth.users`, así que el turno
+  // NO se puede guardar hasta que exista el odontólogo elegido (Fase 4: cuentas de
+  // odontólogo + mapeo de especialistas a usuarios reales). Hasta entonces guardamos
+  // solo si nos llega un `dentistId` real por params; nunca inventamos un id (evita un
+  // INSERT que falla la FK y se traga en silencio).
+  useEffect(() => {
+    if (savedRef.current || !user?.id || !dentistId) return;
+    savedRef.current = true;
+
+    createAppointment({
+      patientId: user.id,
+      dentistId,
+      startsAt: startsAt ?? new Date().toISOString(),
+      durationMin: 45,
+      type: 'consulta',
+    }).catch(() => {
+      // No rompemos la pantalla de éxito si el guardado falla (p. ej. sin conexión).
+    });
+  }, [user?.id, dentistId, startsAt]);
 
   const goHome = () => {
     if (router.canDismiss()) router.dismissAll();
@@ -49,16 +113,16 @@ export default function ConfirmationScreen() {
             icon={<MaterialCommunityIcons name="tooth-outline" size={20} color={palette.white} />}
             gradient={[palette.teal, palette.primary]}
             label="PROFESIONAL"
-            value="Dra. Elena Santos"
-            sub="Especialista en Ortodoncia"
+            value={specialistName ?? 'Dra. Elena Santos'}
+            sub={specialistSubtitle ?? 'Especialista en Ortodoncia'}
             subColor={palette.primary}
           />
           <DetailRow
             icon={<Ionicons name="calendar-outline" size={20} color={palette.white} />}
             gradient={[palette.primary, palette.navy]}
             label="FECHA Y HORA"
-            value="Jueves, 24 de Octubre"
-            sub="14:30 hs"
+            value={fecha?.fecha ?? 'Jueves, 24 de Octubre'}
+            sub={fecha?.hora ?? '14:30 hs'}
           />
           <DetailRow
             icon={<Ionicons name="location-outline" size={20} color={palette.white} />}

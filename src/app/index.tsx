@@ -1,9 +1,18 @@
 import { Redirect } from 'expo-router';
+import { View } from 'react-native';
 
+import { useAuth } from '@/features/auth';
 import { ROUTES } from '@/lib/routes';
-import { session } from '@/lib/session';
+import { palette } from '@/theme/tokens';
 
-/** Puerta de entrada: onboarding/login si no hay sesión, Home si la hay. */
+/** Puerta de entrada: onboarding si no hay sesión; según el rol, portal u Home. */
 export default function Index() {
-  return <Redirect href={session.authed ? ROUTES.home : ROUTES.onboarding} />;
+  const { session, role, loading } = useAuth();
+
+  // Mientras leemos la sesión guardada, el splash sigue cubriendo la pantalla.
+  if (loading) return <View style={{ flex: 1, backgroundColor: palette.background }} />;
+
+  if (!session) return <Redirect href={ROUTES.onboarding} />;
+
+  return <Redirect href={role === 'odontologo' ? ROUTES.portal : ROUTES.home} />;
 }

@@ -10,8 +10,8 @@ import { Card } from '@/components/ui/card';
 import { GradientIcon } from '@/components/ui/gradient-icon';
 import { Reveal } from '@/components/ui/reveal';
 import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
+import { useAuth } from '@/features/auth';
 import { ROUTES } from '@/lib/routes';
-import { session } from '@/lib/session';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
 type Row = {
@@ -25,10 +25,11 @@ type Row = {
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { signOut } = useAuth();
 
   const account: Row[] = [
     { id: 'edit', icon: 'person-outline', label: 'Editar perfil', gradient: [palette.teal, palette.primary] },
-    { id: 'history', icon: 'document-text-outline', label: 'Historial clínico', gradient: [palette.primary, palette.navy] },
+    { id: 'history', icon: 'document-text-outline', label: 'Historial clínico', gradient: [palette.primary, palette.navy], onPress: () => router.push('/history') },
     { id: 'payments', icon: 'card-outline', label: 'Métodos de pago', gradient: [palette.teal, palette.tealDark] },
     { id: 'notifications', icon: 'notifications-outline', label: 'Notificaciones', gradient: [palette.primary, palette.primaryDark] },
   ];
@@ -41,8 +42,8 @@ export default function ProfileScreen() {
       icon: 'log-out-outline',
       label: 'Cerrar sesión',
       danger: true,
-      onPress: () => {
-        session.authed = false;
+      onPress: async () => {
+        await signOut();
         router.replace(ROUTES.login);
       },
     },

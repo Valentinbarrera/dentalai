@@ -12,6 +12,8 @@ import { GradientIcon } from '@/components/ui/gradient-icon';
 import { PressableCard } from '@/components/ui/pressable-card';
 import { Reveal } from '@/components/ui/reveal';
 import { ScreenContainer } from '@/components/ui/screen-container';
+import { useDentistAppointments, type Appointment } from '@/features/appointments';
+import { useAuth } from '@/features/auth';
 import { palette, radius, shadow, spacing, typography } from '@/theme/tokens';
 
 type Appt = {
@@ -31,6 +33,28 @@ const APPTS: Appt[] = [
   { id: 'a2', time: '10:00', dur: '60 min', name: 'Martín Silva', tag: 'ENDODONCIA', tagTone: 'red', scanReady: true },
   { id: 'a3', time: '11:30', dur: '30 min', name: 'Sofía Rossi', tag: 'CONSULTA', tagTone: 'neutral' },
 ];
+
+/** Adapta un turno real de Supabase a la fila que consume la agenda del portal. */
+function toAppt(a: Appointment): Appt {
+  const at = new Date(a.startsAt);
+  const time = `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
+  const tagTone: Appt['tagTone'] = /endodon/i.test(a.type)
+    ? 'red'
+    : /control|limpieza/i.test(a.type)
+      ? 'teal'
+      : 'neutral';
+  return {
+    id: a.id,
+    time,
+    dur: `${a.durationMin} min`,
+    // Nombre real del paciente (join con `profiles` vía el feature); si el embed
+    // no está disponible, caemos al tipo de turno como antes.
+    name: a.patientName ?? a.type.charAt(0).toUpperCase() + a.type.slice(1),
+    tag: a.type.toUpperCase(),
+    tagTone,
+    note: a.note,
+  };
+}
 
 type Patient = { id: string; name: string; when: string; initials: string; color: string; paid: boolean };
 
@@ -56,6 +80,12 @@ const TAG_TONE = {
 
 export default function PortalScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+
+  // Turnos reales del odontólogo desde Supabase (vía el feature, nunca directo).
+  const { appointments } = useDentistAppointments(user?.id);
+  // Fallback al mock si no hay sesión o todavía no hay turnos reales (demo visual intacto).
+  const schedule: Appt[] = appointments.length > 0 ? appointments.map(toAppt) : APPTS;
 
   return (
     <ScreenContainer scroll padded={false} edges={[]} background={palette.background}>
@@ -165,8 +195,8 @@ export default function PortalScreen() {
 
             <View style={styles.divider} />
 
-            {APPTS.length > 0 ? (
-              APPTS.map((a) => <ScheduleItem key={a.id} appt={a} />)
+            {schedule.length > 0 ? (
+              schedule.map((a) => <ScheduleItem key={a.id} appt={a} />)
             ) : (
               <EmptyState
                 icon="calendar-outline"

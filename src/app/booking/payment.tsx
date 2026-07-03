@@ -1,5 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
@@ -33,6 +33,14 @@ const ORDER = [
 export default function PaymentScreen() {
   const router = useRouter();
   const [method, setMethod] = useState('card');
+
+  // Selección del turno (especialista + fecha/hora) que se reenvía a la confirmación.
+  const { specialistId, specialistName, specialistSubtitle, startsAt } = useLocalSearchParams<{
+    specialistId?: string;
+    specialistName?: string;
+    specialistSubtitle?: string;
+    startsAt?: string;
+  }>();
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
@@ -164,7 +172,12 @@ export default function PaymentScreen() {
           <Button
             label="Pagar $250.00"
             left={<Ionicons name="lock-closed" size={16} color={palette.white} />}
-            onPress={() => router.push('/booking/confirmation')}
+            onPress={() =>
+              router.push({
+                pathname: '/booking/confirmation',
+                params: { specialistId, specialistName, specialistSubtitle, startsAt },
+              })
+            }
             style={styles.payBtn}
           />
         </Card>

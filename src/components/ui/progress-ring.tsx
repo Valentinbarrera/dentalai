@@ -1,10 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, CircleProps, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 import { palette, typography } from '@/theme/tokens';
 
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+// `Animated.createAnimatedComponent` inyecta `collapsable={false}` (optimización
+// solo-Android). En web, react-native-svg lo reenvía al <circle> del DOM y React
+// tira un warning. Este wrapper lo descarta y preserva el ref para la animación.
+const SvgCircle = forwardRef<Circle, CircleProps & { collapsable?: boolean }>(
+  ({ collapsable: _collapsable, ...props }, ref) => <Circle ref={ref} {...props} />,
+);
+SvgCircle.displayName = 'SvgCircle';
+
+const AnimatedCircle = Animated.createAnimatedComponent(SvgCircle);
 
 type ProgressRingProps = {
   /** Valor 0–100 */

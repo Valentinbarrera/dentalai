@@ -9,4 +9,5 @@ export const ROUTES = {
   home: '/home' as unknown as Href,
   login: '/login' as unknown as Href,
   onboarding: '/onboarding' as unknown as Href,
+  portal: '/portal' as unknown as Href,
 };

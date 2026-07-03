@@ -19,8 +19,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Reveal } from '@/components/ui/reveal';
 import { TextureGrid } from '@/components/ui/texture-grid';
+import { RoleSelector, useAuth, type UserRole } from '@/features/auth';
 import { ROUTES } from '@/lib/routes';
-import { session } from '@/lib/session';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
 type Mode = 'login' | 'signup';
@@ -28,13 +28,17 @@ type Mode = 'login' | 'signup';
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { signIn, signUp } = useAuth();
 
   const [mode, setMode] = useState<Mode>('login');
+  const [role, setRole] = useState<UserRole>('paciente');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   // Toggle animado
   const [segW, setSegW] = useState(0);
@@ -55,18 +59,40 @@ export default function LoginScreen() {
     ).start();
   };
 
-  const enter = () => {
-    setLoading(true);
-    setTimeout(() => {
-      session.authed = true;
-      router.replace(ROUTES.home);
-    }, 800);
-  };
-
-  const submit = () => {
+  const submit = async () => {
     const missing = !email.trim() || !password.trim() || (mode === 'signup' && !name.trim());
     if (missing) return shake();
-    enter();
+
+    setError(null);
+    setNotice(null);
+    setLoading(true);
+
+    if (mode === 'login') {
+      const { error: err, role: userRole } = await signIn(email, password);
+      setLoading(false);
+      if (err) {
+        setError(err);
+        return shake();
+      }
+      router.replace(userRole === 'odontologo' ? ROUTES.portal : ROUTES.home);
+    } else {
+      const { error: err, needsConfirmation } = await signUp(name, email, password, role);
+      setLoading(false);
+      if (err) {
+        setError(err);
+        return shake();
+      }
+      if (needsConfirmation) {
+        setNotice('Te enviamos un email para confirmar tu cuenta. Revisá tu bandeja.');
+        return;
+      }
+      router.replace(role === 'odontologo' ? ROUTES.portal : ROUTES.home);
+    }
+  };
+
+  const socialSoon = () => {
+    setError(null);
+    setNotice('Google y Apple llegan pronto. Por ahora entrá con tu email.');
   };
 
   return (
@@ -116,6 +142,12 @@ export default function LoginScreen() {
                 <Text style={[styles.segText, mode === 'signup' && styles.segTextActive]}>Crear cuenta</Text>
               </Pressable>
             </View>
+
+            {mode === 'signup' && (
+              <Reveal index={0}>
+                <RoleSelector value={role} onChange={setRole} />
+              </Reveal>
+            )}
 
             {mode === 'signup' && (
               <Reveal index={0}>
@@ -170,6 +202,20 @@ export default function LoginScreen() {
               </Pressable>
             )}
 
+            {/* Mensajes de error / aviso */}
+            {error && (
+              <View style={styles.errorRow}>
+                <Ionicons name="alert-circle" size={16} color={palette.danger ?? '#E5484D'} />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+            {notice && (
+              <View style={styles.noticeRow}>
+                <Ionicons name="mail-outline" size={16} color={palette.primary} />
+                <Text style={styles.noticeText}>{notice}</Text>
+              </View>
+            )}
+
             {/* CTA principal */}
             <Pressable
               onPress={submit}
@@ -196,8 +242,8 @@ export default function LoginScreen() {
 
             {/* Sociales */}
             <View style={styles.socialRow}>
-              <SocialButton icon="logo-google" label="Google" onPress={enter} />
-              <SocialButton icon="logo-apple" label="Apple" onPress={enter} />
+              <SocialButton icon="logo-google" label="Google" onPress={socialSoon} />
+              <SocialButton icon="logo-apple" label="Apple" onPress={socialSoon} />
             </View>
           </Animated.View>
 
@@ -361,6 +407,29 @@ const styles = StyleSheet.create({
 
   forgot: { alignSelf: 'flex-end', marginTop: spacing.md },
   forgotText: { ...typography.caption, color: palette.primary, fontWeight: '600' },
+
+  errorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: palette.dangerSoft,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.md,
+  },
+  errorText: { ...typography.caption, color: palette.danger, fontWeight: '600', flex: 1 },
+  noticeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: palette.primarySoft,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.md,
+  },
+  noticeText: { ...typography.caption, color: palette.primary, fontWeight: '600', flex: 1 },
 
   primary: {
     flexDirection: 'row',

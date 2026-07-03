@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, ViewStyle } from 'react-native';
@@ -13,9 +13,34 @@ import { Reveal } from '@/components/ui/reveal';
 import { CALENDAR_DAYS, TIME_SLOTS, TimeSlot } from '@/lib/specialists';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
+/** Construye un ISO string real a partir del día y horario elegidos en el mock.
+ *  El calendario del mock corresponde a Octubre 2023 (ver el selector de mes). */
+function buildStartsAtISO(dayId: string, slotId: string): string {
+  const d = CALENDAR_DAYS.find((c) => c.id === dayId) ?? CALENDAR_DAYS[0];
+  const t = TIME_SLOTS.find((s) => s.id === slotId) ?? TIME_SLOTS[0];
+  const match = t.label.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  let hours = 9;
+  let minutes = 0;
+  if (match) {
+    hours = Number(match[1]);
+    minutes = Number(match[2]);
+    const meridiem = match[3].toUpperCase();
+    if (meridiem === 'PM' && hours !== 12) hours += 12;
+    if (meridiem === 'AM' && hours === 12) hours = 0;
+  }
+  return new Date(2023, 9, d.date, hours, minutes).toISOString();
+}
+
 export default function AgendaScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  // Especialista elegido en la pantalla anterior; se propaga para el DISPLAY del turno.
+  const { specialistId, specialistName, specialistSubtitle } = useLocalSearchParams<{
+    specialistId?: string;
+    specialistName?: string;
+    specialistSubtitle?: string;
+  }>();
 
   const [day, setDay] = useState('d17');
   const [slot, setSlot] = useState('t3');
@@ -120,7 +145,17 @@ export default function AgendaScreen() {
         <Button
           label="Continuar"
           left={<Ionicons name="arrow-forward" size={18} color={palette.white} />}
-          onPress={() => router.push('/booking/payment')}
+          onPress={() =>
+            router.push({
+              pathname: '/booking/payment',
+              params: {
+                specialistId,
+                specialistName,
+                specialistSubtitle,
+                startsAt: buildStartsAtISO(day, slot),
+              },
+            })
+          }
         />
       </View>
     </SafeAreaView>

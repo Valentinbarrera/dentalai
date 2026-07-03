@@ -16,6 +16,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraGuide } from '@/components/analysis/camera-guide';
 import { Button } from '@/components/ui/button';
 import { Reveal } from '@/components/ui/reveal';
+import { createAnalysis, uploadCaptures, type Capture } from '@/features/analyses';
+import { useAuth } from '@/features/auth';
 import { PHOTO_ANGLES, TOTAL_CAPTURES, VIDEO_CAPTURE } from '@/lib/analysis-steps';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
@@ -33,6 +35,7 @@ const fmtTime = (s: number) => `0:${String(s).padStart(2, '0')}`;
 
 export default function CameraScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [micPermission, requestMic] = useMicrophonePermissions();
@@ -107,12 +110,45 @@ export default function CameraScreen() {
     }
   };
 
-  const finish = (videoUri: string | null) => {
-    setRecording(false);
+  const goToProcessing = (videoUri: string | null, analysisId?: string) => {
     router.replace({
       pathname: '/analysis/processing',
-      params: { photos: String(photos.length), video: videoUri ? '1' : '0' },
+      params: {
+        ...(analysisId ? { analysisId } : {}),
+        photos: String(photos.length),
+        video: videoUri ? '1' : '0',
+      },
     });
+  };
+
+  const finish = async (videoUri: string | null) => {
+    setRecording(false);
+
+    // Sin sesión activa mantenemos el flujo mockeado del demo (no tocamos Supabase).
+    if (!user) {
+      goToProcessing(videoUri);
+      return;
+    }
+
+    // Con usuario logueado: creamos el análisis y subimos las capturas al storage,
+    // siempre a través del feature `@/features/analyses` (la UI no habla con Supabase).
+    setBusy(true);
+    try {
+      const analysisId = await createAnalysis();
+      const captures: Capture[] = [
+        ...photos
+          .map((uri, i) => ({ uri, kind: 'photo' as const, angle: PHOTO_ANGLES[i]?.id }))
+          .filter((c) => Boolean(c.uri)),
+        ...(videoUri ? [{ uri: videoUri, kind: 'video' as const }] : []),
+      ];
+      await uploadCaptures(analysisId, captures);
+      goToProcessing(videoUri, analysisId);
+    } catch {
+      // Si algo falla, no rompemos el demo: seguimos al processing en modo mock.
+      goToProcessing(videoUri);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const cycleFlash = () => {

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { getAnalysis, type AnalysisStatus } from '@/features/analyses';
 import { Reveal } from '@/components/ui/reveal';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
@@ -18,13 +19,16 @@ const STAGES = [
 
 export default function ProcessingScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ photos?: string; video?: string }>();
+  const params = useLocalSearchParams<{ analysisId?: string; photos?: string; video?: string }>();
   const photoCount = Number(params.photos) || 0;
   const hasVideo = params.video === '1';
+  const analysisId = params.analysisId;
 
   const spin = useRef(new Animated.Value(0)).current;
   const progress = useRef(new Animated.Value(0)).current;
   const [stage, setStage] = useState(0);
+  // Estado real del análisis en Supabase (leído siempre vía `@/features/analyses`).
+  const [status, setStatus] = useState<AnalysisStatus | null>(null);
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -59,6 +63,35 @@ export default function ProcessingScreen() {
       clearInterval(stageTimer);
     };
   }, [spin, progress, router]);
+
+  // Reflejamos el estado real del análisis (subiendo → procesando → listo).
+  // Sin `analysisId` (demo sin sesión) mantenemos solo la animación temporizada.
+  useEffect(() => {
+    if (!analysisId) return;
+    let cancelled = false;
+
+    const poll = () => {
+      getAnalysis(analysisId)
+        .then((a) => {
+          if (!cancelled && a) setStatus(a.status);
+        })
+        .catch(() => {
+          // Demo: ignoramos errores de lectura para no cortar la experiencia.
+        });
+    };
+    poll();
+    const id = setInterval(poll, 1500);
+
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [analysisId]);
+
+  // Cuando el análisis real queda listo, adelantamos la navegación al diagnóstico.
+  useEffect(() => {
+    if (status === 'listo') router.replace('/diagnosis');
+  }, [status, router]);
 
   const assetsLabel = hasVideo
     ? `${photoCount} fotos + video 360°`

@@ -13,16 +13,40 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { GradientIcon } from '@/components/ui/gradient-icon';
 import { Reveal } from '@/components/ui/reveal';
+import { useAuth } from '@/features/auth';
+import { uploadCredential, useVerification } from '@/features/credentials';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
 export default function CredentialsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
+  const { user } = useAuth();
+  const { status: verification } = useVerification(user?.id);
+
   const [diploma, setDiploma] = useState<string | null>(null);
   const [matricula, setMatricula] = useState('');
   const [university, setUniversity] = useState('');
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    if (!diploma || !user?.id) return;
+    setSaving(true);
+    setError(null);
+    const { error: uploadError } = await uploadCredential(user.id, {
+      diplomaUri: diploma,
+      matricula,
+      university: university.trim() || undefined,
+    });
+    setSaving(false);
+    if (uploadError) {
+      setError(uploadError);
+      return;
+    }
+    setSaved(true);
+  };
 
   const pickFromGallery = async () => {
     const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
@@ -55,7 +79,26 @@ export default function CredentialsScreen() {
               <Text style={styles.proName}>Dr. Smith</Text>
               <Text style={styles.proSpecialty}>Odontología General</Text>
             </View>
-            <Badge label={saved && diploma ? '● En revisión' : '● Incompleto'} tone={saved && diploma ? 'warning' : 'neutral'} />
+            <Badge
+              label={
+                verification === 'verificado'
+                  ? '● Verificado'
+                  : verification === 'rechazado'
+                    ? '● Rechazado'
+                    : saved && diploma
+                      ? '● En revisión'
+                      : '● Incompleto'
+              }
+              tone={
+                verification === 'verificado'
+                  ? 'success'
+                  : verification === 'rechazado'
+                    ? 'danger'
+                    : saved && diploma
+                      ? 'warning'
+                      : 'neutral'
+              }
+            />
           </Card>
         </Reveal>
 
@@ -161,12 +204,14 @@ export default function CredentialsScreen() {
         {!complete && !saved && (
           <Text style={styles.ctaHint}>Cargá tu título y matrícula para continuar.</Text>
         )}
+        {!!error && <Text style={[styles.ctaHint, { color: palette.danger }]}>{error}</Text>}
         <Button
           label={saved ? 'Credenciales enviadas ✓' : 'Guardar credenciales'}
+          loading={saving}
           disabled={!complete}
           accessibilityLabel={saved ? 'Credenciales enviadas' : 'Guardar credenciales'}
           left={!saved ? <Ionicons name="save-outline" size={18} color={palette.white} /> : undefined}
-          onPress={() => setSaved(true)}
+          onPress={handleSave}
         />
       </View>
     </SafeAreaView>
