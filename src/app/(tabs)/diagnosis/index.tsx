@@ -12,7 +12,7 @@ import { Card } from '@/components/ui/card';
 import { GradientIcon } from '@/components/ui/gradient-icon';
 import { Reveal } from '@/components/ui/reveal';
 import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
-import { getAnalysis, type Analysis, type DiagnosisResult } from '@/features/analyses';
+import { getAnalysis, type Analysis, type DiagnosisResult, type HealthScore } from '@/features/analyses';
 import type { AffectedZone, Severity } from '@/lib/diagnosis';
 import { palette, radius, shadow, spacing, typography } from '@/theme/tokens';
 
@@ -117,6 +117,8 @@ function DiagnosisContent({
       : 'Sin hallazgos relevantes';
 
   const dateLabel = formatDate(createdAt);
+  const summary = result.summary?.trim();
+  const healthScore = result.healthScore;
 
   return (
     <View style={styles.body}>
@@ -134,17 +136,19 @@ function DiagnosisContent({
       </Reveal>
 
       {/* Diagnóstico principal */}
-      {/* TODO(Fase 3): la IA debería devolver en `result` un resumen clínico
-          (nombre + descripción del hallazgo) y un `confidence`. Hasta entonces,
-          el titular se deriva de las zonas reales; NO inventamos texto clínico. */}
+      {/* Fase 3: la IA ya devuelve `result.summary` (resumen clínico preliminar);
+          cuando existe lo mostramos como descripción. Si falta, caemos al texto
+          genérico derivado de las zonas reales; NO inventamos texto clínico.
+          El titular sigue derivándose de las zonas; `confidence` aún no llega. */}
       <Reveal index={1}>
         <Card style={styles.diagCard}>
           <Badge label={badge.label} tone={badge.tone} />
           <Text style={styles.diagLabel}>Diagnóstico preliminar:</Text>
           <Text style={[styles.diagName, { color: SEVERITY_COLOR[worst] }]}>{headline}</Text>
           <Text style={styles.diagDesc}>
-            Revisá abajo las zonas detectadas por el análisis y compará las opciones de tratamiento
-            disponibles para tu caso.
+            {summary
+              ? summary
+              : 'Revisá abajo las zonas detectadas por el análisis y compará las opciones de tratamiento disponibles para tu caso.'}
           </Text>
           <Button
             label="Ver opciones"
@@ -185,8 +189,15 @@ function DiagnosisContent({
         </View>
       </Reveal>
 
+      {/* Estado de salud bucal (solo si la IA devolvió `healthScore`) */}
+      {healthScore ? (
+        <Reveal index={3}>
+          <HealthScoreSection score={healthScore} />
+        </Reveal>
+      ) : null}
+
       {/* Zonas afectadas */}
-      <Reveal index={3}>
+      <Reveal index={healthScore ? 4 : 3}>
         <View style={styles.sectionHeaderRow}>
           <View style={styles.accentBar} />
           <Text style={styles.sectionTitle}>Zonas Afectadas</Text>
@@ -243,6 +254,53 @@ function formatDate(iso?: string): string {
   return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
 }
 
+/** Color de un puntaje 0-100: >=70 bien, 40-69 regular, <40 alerta. */
+function scoreColor(value: number): string {
+  if (value >= 70) return palette.success;
+  if (value >= 40) return palette.warning;
+  return palette.danger;
+}
+
+/** Sección "Estado de tu salud bucal": 4 mini-medidores 0-100 con el número visible. */
+function HealthScoreSection({ score }: { score: HealthScore }) {
+  const metrics: { key: keyof HealthScore; label: string }[] = [
+    { key: 'general', label: 'General' },
+    { key: 'higiene', label: 'Higiene' },
+    { key: 'encias', label: 'Encías' },
+    { key: 'alineacion', label: 'Alineación' },
+  ];
+  return (
+    <View>
+      <View style={styles.sectionHeaderRow}>
+        <View style={styles.accentBar} />
+        <Text style={styles.sectionTitle}>Estado de tu salud bucal</Text>
+      </View>
+      <Card style={styles.scoreCard}>
+        {metrics.map((m) => (
+          <ScoreBar key={m.key} label={m.label} value={score[m.key]} />
+        ))}
+      </Card>
+    </View>
+  );
+}
+
+/** Barra de progreso horizontal 0-100 con etiqueta y número, coloreada por valor. */
+function ScoreBar({ label, value }: { label: string; value: number }) {
+  const clamped = Math.max(0, Math.min(100, Math.round(value)));
+  const color = scoreColor(clamped);
+  return (
+    <View style={styles.scoreRow}>
+      <View style={styles.scoreLabelRow}>
+        <Text style={styles.scoreLabel}>{label}</Text>
+        <Text style={[styles.scoreValue, { color }]}>{clamped}</Text>
+      </View>
+      <View style={styles.scoreTrack}>
+        <View style={[styles.scoreFill, { width: `${clamped}%`, backgroundColor: color }]} />
+      </View>
+    </View>
+  );
+}
+
 function ZoneCard({ zone }: { zone: AffectedZone }) {
   const color = SEVERITY_COLOR[zone.severity];
   return (
@@ -295,6 +353,20 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   sectionTitle: { ...typography.h2, fontSize: 20, color: palette.textPrimary },
+
+  scoreCard: { gap: spacing.lg },
+  scoreRow: { gap: spacing.xs },
+  scoreLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  scoreLabel: { ...typography.bodyStrong, color: palette.textPrimary },
+  scoreValue: { ...typography.bodyStrong, fontWeight: '800' },
+  scoreTrack: {
+    height: 8,
+    borderRadius: radius.pill,
+    backgroundColor: palette.primarySoft,
+    overflow: 'hidden',
+  },
+  scoreFill: { height: '100%', borderRadius: radius.pill },
+
   zonesRow: { gap: spacing.md, paddingRight: spacing.xl },
   zoneCard: { width: 200 },
   zoneTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },

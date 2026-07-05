@@ -25,8 +25,12 @@ export type TreatmentOption = {
   tiempo: string;
   cirugia: string;
   durabilidad: string;
-  /** Colores del degradado para el placeholder de imagen */
-  accent: [string, string];
+  /**
+   * Colores del degradado para el placeholder de imagen.
+   * Opcional: la IA (Fase 3) NO elige colores; cuando falta, la pantalla
+   * asigna un degradado de la paleta según el índice de la opción.
+   */
+  accent?: [string, string];
 };
 
 export const TREATMENT_OPTIONS: TreatmentOption[] = [

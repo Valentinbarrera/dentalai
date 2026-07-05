@@ -1,10 +1,10 @@
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getAnalysis, type AnalysisStatus } from '@/features/analyses';
+import { getAnalysis, requestAnalysis, type AnalysisStatus } from '@/features/analyses';
 import { Reveal } from '@/components/ui/reveal';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
@@ -30,6 +30,10 @@ export default function ProcessingScreen() {
   // Estado real del análisis en Supabase (leído siempre vía `@/features/analyses`).
   const [status, setStatus] = useState<AnalysisStatus | null>(null);
 
+  // Con un análisis real la IA puede tardar unos segundos: damos más aire a la
+  // barra y NO navegamos al terminar la animación (esperamos el estado real).
+  const duration = analysisId ? 9000 : DURATION;
+
   useEffect(() => {
     const loop = Animated.loop(
       Animated.timing(spin, {
@@ -41,20 +45,22 @@ export default function ProcessingScreen() {
     );
     loop.start();
 
-    const stepMs = DURATION / STAGES.length;
+    const stepMs = duration / STAGES.length;
     const stageTimer = setInterval(
       () => setStage((s) => Math.min(s + 1, STAGES.length - 1)),
       stepMs,
     );
 
+    // En modo real la barra llega al 92% y espera al resultado; en demo llega al
+    // 100% y navega. Así nunca “miente” mostrando 100% antes de tener diagnóstico.
     const bar = Animated.timing(progress, {
-      toValue: 1,
-      duration: DURATION,
+      toValue: analysisId ? 0.92 : 1,
+      duration,
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: false,
     });
     bar.start(({ finished }) => {
-      if (finished) router.replace('/diagnosis');
+      if (finished && !analysisId) router.replace('/diagnosis');
     });
 
     return () => {
@@ -62,13 +68,19 @@ export default function ProcessingScreen() {
       bar.stop();
       clearInterval(stageTimer);
     };
-  }, [spin, progress, router]);
+  }, [spin, progress, router, analysisId, duration]);
 
-  // Reflejamos el estado real del análisis (subiendo → procesando → listo).
-  // Sin `analysisId` (demo sin sesión) mantenemos solo la animación temporizada.
+  // Con `analysisId`: disparamos la IA (Edge Function `analyze`) y hacemos polling
+  // del estado. Sin id (demo sin sesión) queda solo la animación temporizada.
   useEffect(() => {
     if (!analysisId) return;
     let cancelled = false;
+
+    // Fire-and-forget: si la invocación falla, el polling detecta el `error` que
+    // la propia función deja en la fila; si ni siquiera llega, lo marcamos acá.
+    requestAnalysis(analysisId).catch(() => {
+      if (!cancelled) setStatus('error');
+    });
 
     const poll = () => {
       getAnalysis(analysisId)
@@ -76,7 +88,7 @@ export default function ProcessingScreen() {
           if (!cancelled && a) setStatus(a.status);
         })
         .catch(() => {
-          // Demo: ignoramos errores de lectura para no cortar la experiencia.
+          // Ignoramos errores puntuales de lectura; el próximo poll reintenta.
         });
     };
     poll();
@@ -88,14 +100,53 @@ export default function ProcessingScreen() {
     };
   }, [analysisId]);
 
-  // Cuando el análisis real queda listo, adelantamos la navegación al diagnóstico.
+  // Cuando el análisis real queda listo, navegamos al diagnóstico con su id
+  // (para que la pantalla de resultados lea el `result` real de ese análisis).
   useEffect(() => {
-    if (status === 'listo') router.replace('/diagnosis');
-  }, [status, router]);
+    if (status === 'listo' && analysisId) {
+      router.replace({ pathname: '/diagnosis', params: { analysisId } });
+    }
+  }, [status, analysisId, router]);
 
   const assetsLabel = hasVideo
     ? `${photoCount} fotos + video 360°`
     : `${photoCount} ${photoCount === 1 ? 'foto' : 'fotos'}`;
+
+  // Reintenta el análisis sobre el mismo scan (re-dispara la Edge Function).
+  const retry = () => {
+    if (!analysisId) return;
+    setStatus('procesando');
+    requestAnalysis(analysisId).catch(() => setStatus('error'));
+  };
+
+  // Estado de error honesto: la IA no pudo procesar (imágenes, red o config).
+  if (status === 'error') {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.center}>
+          <View style={styles.errIcon}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={40} color={palette.danger} />
+          </View>
+          <Reveal index={0} delay={100} style={styles.textBlock}>
+            <Text style={styles.title}>No pudimos{'\n'}analizar tus fotos</Text>
+            <Text style={styles.subtitle}>
+              Puede ser por la calidad de las imágenes o una falla temporal. Podés reintentar o
+              volver a sacar las fotos.
+            </Text>
+          </Reveal>
+          <Pressable style={styles.retryBtn} onPress={retry} accessibilityRole="button">
+            <Text style={styles.retryText}>Reintentar</Text>
+          </Pressable>
+          <Pressable
+            style={styles.secondaryBtn}
+            onPress={() => router.replace('/analysis/tutorial')}
+            accessibilityRole="button">
+            <Text style={styles.secondaryText}>Volver a sacar las fotos</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const width = progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
@@ -246,4 +297,27 @@ const styles = StyleSheet.create({
   stageIconDone: { backgroundColor: palette.teal, borderColor: palette.teal },
   stageLabel: { ...typography.body, color: palette.textMuted },
   stageLabelOn: { color: palette.textPrimary, fontWeight: '600' },
+
+  // Estado de error.
+  errIcon: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: palette.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing['2xl'],
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  retryBtn: {
+    marginTop: spacing['2xl'],
+    backgroundColor: palette.primary,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing['3xl'],
+    paddingVertical: spacing.md,
+  },
+  retryText: { ...typography.body, color: palette.white, fontWeight: '700' },
+  secondaryBtn: { marginTop: spacing.lg, paddingVertical: spacing.sm },
+  secondaryText: { ...typography.body, color: palette.primary, fontWeight: '600' },
 });

@@ -19,6 +19,14 @@ import { palette, radius, spacing, typography } from '@/theme/tokens';
 const CARD_W = Math.min(Dimensions.get('window').width * 0.82, 340);
 const GAP = 16;
 
+// Paleta de degradados por defecto. La IA ya no elige colores, así que si una
+// opción no trae `accent` usamos uno de estos según su índice.
+const DEFAULT_ACCENTS: [string, string][] = [
+  ['#0D9488', '#2563EB'],
+  ['#6366F1', '#8B5CF6'],
+  ['#0EA5E9', '#22D3EE'],
+];
+
 export default function ComparadorScreen() {
   const router = useRouter();
 
@@ -98,8 +106,8 @@ export default function ComparadorScreen() {
                 snapToInterval={CARD_W + GAP}
                 decelerationRate="fast"
                 contentContainerStyle={styles.carousel}>
-                {options.map((opt) => (
-                  <TreatmentCard key={opt.id} opt={opt} analysisId={analysisId} />
+                {options.map((opt, index) => (
+                  <TreatmentCard key={opt.id} opt={opt} index={index} analysisId={analysisId} />
                 ))}
               </ScrollView>
             </Reveal>
@@ -135,12 +143,21 @@ function ComparadorEmpty() {
   );
 }
 
-function TreatmentCard({ opt, analysisId }: { opt: TreatmentOption; analysisId?: string }) {
+function TreatmentCard({
+  opt,
+  index,
+  analysisId,
+}: {
+  opt: TreatmentOption;
+  index: number;
+  analysisId?: string;
+}) {
   const router = useRouter();
+  const accent = opt.accent ?? DEFAULT_ACCENTS[index % DEFAULT_ACCENTS.length];
   return (
     <Card style={styles.card} padded={false}>
       {/* Imagen */}
-      <LinearGradient colors={opt.accent} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.image}>
+      <LinearGradient colors={accent} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.image}>
         <MaterialCommunityIcons name="tooth" size={64} color="rgba(255,255,255,0.85)" />
         {opt.recommended && (
           <View style={styles.recBadge}>

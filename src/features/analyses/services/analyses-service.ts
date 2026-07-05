@@ -110,6 +110,25 @@ export async function createAnalysis(): Promise<string> {
   return data.id as string;
 }
 
+/**
+ * Dispara el diagnóstico con IA: invoca la Edge Function `analyze`, que baja las
+ * capturas del bucket, las manda a Claude Vision y guarda el `result` en la fila,
+ * pasando el estado a `procesando` → `listo` (o `error`).
+ *
+ * Es "fire-and-forget" desde la UI: `analysis/processing.tsx` hace polling del
+ * estado y navega al diagnóstico cuando queda `listo`. No esperamos la respuesta
+ * completa acá (el análisis puede tardar varios segundos).
+ *
+ * Supabase adjunta el JWT del usuario automáticamente, así la función sabe de
+ * quién es el análisis (y sólo puede leer capturas de su propia carpeta).
+ */
+export async function requestAnalysis(analysisId: string): Promise<void> {
+  const { error } = await supabase.functions.invoke('analyze', {
+    body: { analysisId },
+  });
+  if (error) throw new Error(`No pudimos iniciar el análisis con IA: ${error.message}`);
+}
+
 /** Trae un análisis puntual por id (o `null` si no existe / no es del usuario). */
 export async function getAnalysis(id: string): Promise<Analysis | null> {
   const { data, error } = await supabase

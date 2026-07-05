@@ -17,12 +17,70 @@ export type Capture = {
 export type AnalysisStatus = 'subiendo' | 'procesando' | 'listo' | 'error';
 
 /**
- * Resultado del diagnóstico, con el shape de `lib/diagnosis.ts`.
+ * Puntaje de salud bucal (0-100) que devuelve la IA. Orientativo, no clínico.
+ * `general` es el resumen; los otros tres son dimensiones específicas.
+ */
+export type HealthScore = {
+  general: number;
+  higiene: number;
+  encias: number;
+  alineacion: number;
+};
+
+/** Una línea del desglose del presupuesto (precio como string, ej. "$2,000"). */
+export type BudgetItem = {
+  label: string;
+  price: string;
+  note?: string;
+  /** Cantidad, ej. "2x" (opcional). */
+  qty?: string;
+};
+
+/** Una alternativa de financiación (ej. 12 cuotas). */
+export type FinancingOption = {
+  months: string;
+  monthly: string;
+  note?: string;
+};
+
+/** Presupuesto estimado del tratamiento recomendado. */
+export type Budget = {
+  items: BudgetItem[];
+  subtotal: string;
+  total: string;
+  financing: FinancingOption[];
+};
+
+/** Un plan de pago concreto (pago completo, cuotas bancarias, financiación interna). */
+export type PaymentPlan = {
+  id: string;
+  title: string;
+  highlight?: string;
+  total?: string;
+  initial?: string;
+  monthly?: string;
+  monthlyNote?: string;
+  /** Marca el plan destacado (CTA primario). */
+  primary?: boolean;
+};
+
+/**
+ * Resultado del diagnóstico que produce la IA (Edge Function `analyze`, Fase 3).
  * Es `null` mientras el análisis todavía no terminó de procesarse.
+ *
+ * `affectedZones` y `treatmentOptions` reusan el shape de `lib/diagnosis.ts`.
+ * Los campos `summary`, `healthScore`, `budget` y `paymentPlans` son opcionales:
+ * los agrega la IA en Fase 3. Toda la app enmarca esto como ORIENTACIÓN
+ * PRELIMINAR, nunca como diagnóstico clínico.
  */
 export type DiagnosisResult = {
+  /** Resumen clínico preliminar en 1-2 frases (opcional). */
+  summary?: string;
   affectedZones: AffectedZone[];
   treatmentOptions: TreatmentOption[];
+  healthScore?: HealthScore;
+  budget?: Budget;
+  paymentPlans?: PaymentPlan[];
 };
 
 /** Una fila de la tabla `analyses`: un scan del paciente y su diagnóstico. */
