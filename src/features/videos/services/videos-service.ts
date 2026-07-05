@@ -108,6 +108,11 @@ export async function listMyVideos(authorId: string): Promise<Video[]> {
 
 /** Borra un video por id. RLS sólo permite borrar los del propio autor. */
 export async function deleteVideo(id: string): Promise<void> {
-  const { error } = await supabase.from('videos').delete().eq('id', id);
+  // Pedimos `select` para distinguir "borrado ok" de "RLS filtró la fila" (que
+  // sin select vuelve como éxito con 0 filas afectadas).
+  const { data, error } = await supabase.from('videos').delete().eq('id', id).select('id');
   if (error) throw new Error(`No pudimos borrar el video: ${error.message}`);
+  if (!data || data.length === 0) {
+    throw new Error('No pudimos borrar el video (no existe o no es tuyo).');
+  }
 }

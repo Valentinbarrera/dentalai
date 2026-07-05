@@ -41,6 +41,9 @@ const ERROR_REPLY =
 export default function DentaScreen() {
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
+  // Guard síncrono contra doble envío (chips + Enter en el mismo tick):
+  // `sending` es asíncrono, el ref bloquea de inmediato.
+  const sendingRef = useRef(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 'welcome', role: 'denta', text: DENTA_WELCOME, time: formatNow() },
@@ -58,7 +61,8 @@ export default function DentaScreen() {
   /** Envía un mensaje del usuario a Denta (IA real) y agrega la respuesta. */
   const send = async (text: string) => {
     const clean = text.trim();
-    if (!clean || sending) return;
+    if (!clean || sendingRef.current) return;
+    sendingRef.current = true;
 
     const userMsg: ChatMessage = {
       id: nextMessageId(),
@@ -73,8 +77,12 @@ export default function DentaScreen() {
     scrollToEnd();
 
     try {
-      // Mandamos el historial (rol + texto) para que la IA tenga contexto.
-      const reply = await sendDentaMessage(history.map((m) => ({ role: m.role, text: m.text })));
+      // Mandamos el historial (rol + texto) SIN el saludo inicial: la API exige
+      // que la conversación empiece con un turno del usuario.
+      const payload = history
+        .filter((m) => m.id !== 'welcome')
+        .map((m) => ({ role: m.role, text: m.text }));
+      const reply = await sendDentaMessage(payload);
       setMessages((prev) => [
         ...prev,
         { id: nextMessageId(), role: 'denta', text: reply, time: formatNow() },
@@ -87,6 +95,7 @@ export default function DentaScreen() {
         { id: nextMessageId(), role: 'denta', text: ERROR_REPLY, time: formatNow() },
       ]);
     } finally {
+      sendingRef.current = false;
       setSending(false);
       scrollToEnd();
     }

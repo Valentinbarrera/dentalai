@@ -286,7 +286,9 @@ function HealthScoreSection({ score }: { score: HealthScore }) {
 
 /** Barra de progreso horizontal 0-100 con etiqueta y número, coloreada por valor. */
 function ScoreBar({ label, value }: { label: string; value: number }) {
-  const clamped = Math.max(0, Math.min(100, Math.round(value)));
+  // Si la IA omitió esta métrica, `value` puede venir undefined → evitamos "NaN".
+  const safe = Number.isFinite(value) ? value : 0;
+  const clamped = Math.max(0, Math.min(100, Math.round(safe)));
   const color = scoreColor(clamped);
   return (
     <View style={styles.scoreRow}>

@@ -83,7 +83,10 @@ export default function PresupuestoScreen() {
 
 /** Presupuesto real: desglose por ítem, resumen (subtotal/total) y financiación. */
 function PresupuestoContent({ budget }: { budget: Budget }) {
-  const hasFinancing = budget.financing.length > 0;
+  // La IA produce `budget` con shape libre: blindamos por si faltan `items`/`financing`.
+  const items = budget.items ?? [];
+  const financing = budget.financing ?? [];
+  const hasFinancing = financing.length > 0;
 
   return (
     <View style={styles.contentWrap}>
@@ -95,7 +98,7 @@ function PresupuestoContent({ budget }: { budget: Budget }) {
         </View>
 
         <Card style={styles.card}>
-          {budget.items.map((item, i) => (
+          {items.map((item, i) => (
             <View
               key={`${item.label}-${i}`}
               style={[styles.itemRow, i > 0 && styles.itemRowBordered]}>
@@ -140,7 +143,7 @@ function PresupuestoContent({ budget }: { budget: Budget }) {
           </View>
 
           <Card style={styles.card}>
-            {budget.financing.map((fin, i) => (
+            {financing.map((fin, i) => (
               <View
                 key={`${fin.months}-${i}`}
                 style={[styles.finRow, i > 0 && styles.itemRowBordered]}>

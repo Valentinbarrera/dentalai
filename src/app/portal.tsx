@@ -30,6 +30,8 @@ type Appt = {
   time: string;
   dur: string;
   name: string;
+  /** Nombre REAL del paciente (embed con profiles), sin fallback al tipo de turno. */
+  patientName?: string;
   tag: string;
   tagTone: 'teal' | 'red' | 'neutral';
   note?: string;
@@ -55,6 +57,8 @@ function toAppt(a: Appointment): Appt {
     // Nombre real del paciente (join con `profiles` vía el feature); si el embed
     // no está disponible, caemos al tipo de turno como antes.
     name: a.patientName ?? a.type.charAt(0).toUpperCase() + a.type.slice(1),
+    // Nombre real (o undefined): para la ficha NO queremos el tipo de turno como nombre.
+    patientName: a.patientName,
     tag: a.type.toUpperCase(),
     tagTone,
     note: a.note,
@@ -186,6 +190,7 @@ export default function PortalScreen() {
     let today = 0;
     let week = 0;
     for (const a of items) {
+      if (a.status === 'cancelado') continue; // los cancelados no cuentan
       const day = startOfDay(new Date(a.startsAt)).getTime();
       if (day === todayStart) today += 1;
       if (day >= todayStart && day < weekEnd) week += 1;
@@ -200,20 +205,22 @@ export default function PortalScreen() {
 
   /** Cambia el estado de un turno con UI optimista + reversión suave ante error. */
   async function handleStatus(id: string, status: AppointmentStatus) {
-    const snapshot = items;
+    const prev = items.find((a) => a.id === id)?.status;
     setItems((cur) => cur.map((a) => (a.id === id ? { ...a, status } : a)));
     try {
       const updated = await runStatus(id, status);
       // Reconciliamos con lo que devuelve el servidor (fuente de verdad).
       setItems((cur) => cur.map((a) => (a.id === id ? updated : a)));
     } catch {
-      setItems(snapshot); // revertir
+      // Revertimos SOLO este turno (no toda la lista) para no pisar cambios
+      // de otros turnos actualizados en el interín.
+      if (prev) setItems((cur) => cur.map((a) => (a.id === id ? { ...a, status: prev } : a)));
       Alert.alert('No se pudo actualizar el turno', 'Revisá tu conexión e intentá de nuevo.');
     }
   }
 
-  const goToPatient = (id: string, name: string) =>
-    router.push({ pathname: '/patient/[id]', params: { id, name } });
+  const goToPatient = (id: string, name?: string) =>
+    router.push({ pathname: '/patient/[id]', params: name ? { id, name } : { id } });
 
   return (
     <ScreenContainer scroll padded={false} edges={[]} background={palette.background}>
@@ -355,7 +362,8 @@ export default function PortalScreen() {
                   key={a.id}
                   appt={a}
                   busyStatus={pending?.id === a.id ? pending.status : null}
-                  onPressPatient={() => goToPatient(a.patientId, a.name)}
+                  anyBusy={pending !== null}
+                  onPressPatient={() => goToPatient(a.patientId, a.patientName)}
                   onAction={(status) => handleStatus(a.id, status)}
                 />
               ))
@@ -472,17 +480,22 @@ function EmptyState({
 function ScheduleItem({
   appt,
   busyStatus,
+  anyBusy,
   onPressPatient,
   onAction,
 }: {
   appt: Appt;
   /** Estado que se está aplicando ahora sobre este turno, o null si no hay nada en curso. */
   busyStatus: AppointmentStatus | null;
+  /** Hay CUALQUIER acción en vuelo (en este turno u otro): serializa las acciones. */
+  anyBusy: boolean;
   onPressPatient: () => void;
   onAction: (status: AppointmentStatus) => void;
 }) {
   const tone = TAG_TONE[appt.tagTone];
-  const busy = busyStatus !== null;
+  // Deshabilitamos las acciones de todos los turnos mientras una está en curso,
+  // para evitar mutaciones concurrentes que se pisen entre sí.
+  const busy = anyBusy;
   const closed = appt.status === 'completado' || appt.status === 'cancelado';
   const badge = APPT_STATUS_BADGE[appt.status];
 

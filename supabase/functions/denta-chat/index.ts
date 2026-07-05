@@ -59,13 +59,25 @@ Deno.serve(async (req) => {
     }))
     .slice(-MAX_HISTORY);
 
-  // La API exige que el historial arranque con un turno de 'user'.
+  // La API exige que el historial arranque con un turno de 'user'…
   while (mapped.length && mapped[0].role !== 'user') mapped.shift();
+  // …y que termine en 'user' (un assistant final sería un prefill, que el modelo
+  // rechaza con 400). Descartamos turnos de assistant colgados al final.
+  while (mapped.length && mapped[mapped.length - 1].role !== 'user') mapped.pop();
   if (mapped.length === 0) {
     return json({ error: 'No hay mensaje del usuario para responder.' }, 400);
   }
 
   try {
+    // Claude Fable 5 rechaza `thinking: disabled` explícito → lo omitimos ahí.
+    const requestBody: Record<string, unknown> = {
+      model,
+      max_tokens: 500,
+      system: SYSTEM_PROMPT,
+      messages: mapped,
+    };
+    if (!model.startsWith('claude-fable')) requestBody.thinking = { type: 'disabled' };
+
     const aiRes = await fetch(ANTHROPIC_URL, {
       method: 'POST',
       headers: {
@@ -73,18 +85,13 @@ Deno.serve(async (req) => {
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        model,
-        max_tokens: 500,
-        thinking: { type: 'disabled' },
-        system: SYSTEM_PROMPT,
-        messages: mapped,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!aiRes.ok) {
       const detail = await aiRes.text();
-      throw new Error(`Claude respondió ${aiRes.status}: ${detail.slice(0, 200)}`);
+      console.error(`[denta-chat] Anthropic ${aiRes.status}: ${detail.slice(0, 500)}`);
+      throw new Error(`El servicio de IA respondió ${aiRes.status}.`);
     }
 
     const aiJson = await aiRes.json();

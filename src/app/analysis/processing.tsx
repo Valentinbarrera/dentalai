@@ -29,6 +29,8 @@ export default function ProcessingScreen() {
   const [stage, setStage] = useState(0);
   // Estado real del análisis en Supabase (leído siempre vía `@/features/analyses`).
   const [status, setStatus] = useState<AnalysisStatus | null>(null);
+  // Se incrementa al reintentar: reinicia el effect de IA + polling.
+  const [attempt, setAttempt] = useState(0);
 
   // Con un análisis real la IA puede tardar unos segundos: damos más aire a la
   // barra y NO navegamos al terminar la animación (esperamos el estado real).
@@ -75,6 +77,13 @@ export default function ProcessingScreen() {
   useEffect(() => {
     if (!analysisId) return;
     let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval>;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const stop = () => {
+      clearInterval(intervalId);
+      clearTimeout(timeoutId);
+    };
 
     // Fire-and-forget: si la invocación falla, el polling detecta el `error` que
     // la propia función deja en la fila; si ni siquiera llega, lo marcamos acá.
@@ -85,20 +94,32 @@ export default function ProcessingScreen() {
     const poll = () => {
       getAnalysis(analysisId)
         .then((a) => {
-          if (!cancelled && a) setStatus(a.status);
+          if (cancelled || !a) return;
+          setStatus(a.status);
+          // Al llegar a un estado terminal frenamos el polling (evita seguir
+          // consultando y pisar el estado con un poll tardío).
+          if (a.status === 'listo' || a.status === 'error') stop();
         })
         .catch(() => {
           // Ignoramos errores puntuales de lectura; el próximo poll reintenta.
         });
     };
     poll();
-    const id = setInterval(poll, 1500);
+    intervalId = setInterval(poll, 1500);
+    // Tope de seguridad: si a los 90s no hay resultado, cortamos con error
+    // (así la pantalla nunca queda colgada en 92% para siempre).
+    timeoutId = setTimeout(() => {
+      if (!cancelled) {
+        setStatus('error');
+        stop();
+      }
+    }, 90_000);
 
     return () => {
       cancelled = true;
-      clearInterval(id);
+      stop();
     };
-  }, [analysisId]);
+  }, [analysisId, attempt]);
 
   // Cuando el análisis real queda listo, navegamos al diagnóstico con su id
   // (para que la pantalla de resultados lea el `result` real de ese análisis).
@@ -112,11 +133,12 @@ export default function ProcessingScreen() {
     ? `${photoCount} fotos + video 360°`
     : `${photoCount} ${photoCount === 1 ? 'foto' : 'fotos'}`;
 
-  // Reintenta el análisis sobre el mismo scan (re-dispara la Edge Function).
+  // Reintenta el análisis sobre el mismo scan: bumpea `attempt` para reiniciar
+  // el effect (re-dispara la IA y reanuda el polling, que ya estaba frenado).
   const retry = () => {
     if (!analysisId) return;
     setStatus('procesando');
-    requestAnalysis(analysisId).catch(() => setStatus('error'));
+    setAttempt((n) => n + 1);
   };
 
   // Estado de error honesto: la IA no pudo procesar (imágenes, red o config).

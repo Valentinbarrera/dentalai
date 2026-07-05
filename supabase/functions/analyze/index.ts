@@ -172,6 +172,23 @@ Deno.serve(async (req) => {
     if (images.length === 0) throw new Error('No pudimos leer las fotos del scan.');
 
     // 2) Llamamos a Claude Vision.
+    // `thinking: disabled` acelera/abarata la extracción, pero Claude Fable 5
+    // rechaza el disabled explícito → en ese caso omitimos el parámetro.
+    const requestBody: Record<string, unknown> = {
+      model,
+      // Holgura para que el JSON (zonas + tratamientos + presupuesto + planes)
+      // no se trunque; por debajo de ~16k no hay riesgo de timeout.
+      max_tokens: 4000,
+      system: SYSTEM_PROMPT,
+      messages: [
+        {
+          role: 'user',
+          content: [...images, { type: 'text', text: USER_INSTRUCTIONS }],
+        },
+      ],
+    };
+    if (!model.startsWith('claude-fable')) requestBody.thinking = { type: 'disabled' };
+
     const aiRes = await fetch(ANTHROPIC_URL, {
       method: 'POST',
       headers: {
@@ -179,29 +196,22 @@ Deno.serve(async (req) => {
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        model,
-        max_tokens: 2000,
-        // Extracción estructurada: sin thinking para ir rápido y barato.
-        thinking: { type: 'disabled' },
-        system: SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: [...images, { type: 'text', text: USER_INSTRUCTIONS }],
-          },
-        ],
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!aiRes.ok) {
       const detail = await aiRes.text();
-      throw new Error(`Claude respondió ${aiRes.status}: ${detail.slice(0, 300)}`);
+      // Log del detalle del proveedor del lado servidor; al cliente, mensaje genérico.
+      console.error(`[analyze] Anthropic ${aiRes.status}: ${detail.slice(0, 500)}`);
+      throw new Error(`El servicio de IA respondió ${aiRes.status}.`);
     }
 
     const aiJson = await aiRes.json();
     if (aiJson.stop_reason === 'refusal') {
       throw new Error('El modelo no pudo analizar estas imágenes.');
+    }
+    if (aiJson.stop_reason === 'max_tokens') {
+      throw new Error('La respuesta de la IA quedó incompleta. Reintentá el análisis.');
     }
     const textBlock = (aiJson.content ?? []).find(
       (b: Record<string, unknown>) => b.type === 'text',
