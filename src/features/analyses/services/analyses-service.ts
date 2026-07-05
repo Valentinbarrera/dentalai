@@ -157,3 +157,22 @@ export async function listMyAnalyses(): Promise<Analysis[]> {
   if (error) throw new Error(`No pudimos listar los análisis: ${error.message}`);
   return (data as AnalysisRow[]).map(toAnalysis);
 }
+
+/**
+ * Lista los análisis de un usuario puntual (`userId`), del más nuevo al más viejo.
+ *
+ * Pensado para el odontólogo viendo la ficha de un paciente: la policy RLS
+ * (migración 0008) le permite leer los `analyses` de los pacientes con los que
+ * comparte un turno. Filtra por `user_id = userId`; si el que consulta no tiene
+ * permiso sobre ese paciente, RLS devuelve una lista vacía.
+ */
+export async function listAnalysesForUser(userId: string): Promise<Analysis[]> {
+  const { data, error } = await supabase
+    .from('analyses')
+    .select('id, user_id, status, result, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(`No pudimos listar los análisis del paciente: ${error.message}`);
+  return (data as AnalysisRow[]).map(toAnalysis);
+}

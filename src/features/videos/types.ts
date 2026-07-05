@@ -17,5 +17,20 @@ export type Video = {
   videoUrl: string | null;
   /** Duración legible (ej. "8:30"), o `null`. */
   duration: string | null;
+  /** Id del odontólogo que cargó el video, o `null` (contenido histórico sin autor). */
+  authorId: string | null;
   createdAt: string;
+};
+
+/**
+ * Datos que carga el odontólogo para publicar un video (por URL).
+ * Sólo `title` es obligatorio; el resto es opcional.
+ */
+export type CreateVideoInput = {
+  title: string;
+  description?: string;
+  category?: string;
+  videoUrl?: string;
+  thumbnailUrl?: string;
+  duration?: string;
 };

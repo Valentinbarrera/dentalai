@@ -14,5 +14,6 @@ export {
   useDentistAppointments,
   useDentistPatients,
   usePatientAppointments,
+  useUpdateAppointmentStatus,
 } from './hooks/use-appointments';
 export type { Appointment, AppointmentStatus, CreateAppointmentInput, DentistPatient } from './types';

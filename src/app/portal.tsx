@@ -1,8 +1,8 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Badge } from '@/components/ui/badge';
 import { BrandBand } from '@/components/ui/brand-band';
@@ -15,23 +15,27 @@ import { ScreenContainer } from '@/components/ui/screen-container';
 import {
   useDentistAppointments,
   useDentistPatients,
+  useUpdateAppointmentStatus,
   type Appointment,
   type AppointmentStatus,
   type DentistPatient,
 } from '@/features/appointments';
 import { useAuth } from '@/features/auth';
-import { palette, radius, shadow, spacing, typography } from '@/theme/tokens';
+import { palette, radius, spacing, typography } from '@/theme/tokens';
 
 type Appt = {
   id: string;
+  /** Usuario paciente dueño del turno, para navegar a su ficha. */
+  patientId: string;
   time: string;
   dur: string;
   name: string;
   tag: string;
   tagTone: 'teal' | 'red' | 'neutral';
   note?: string;
-  primary?: boolean;
-  scanReady?: boolean;
+  status: AppointmentStatus;
+  /** Momento de inicio (ISO), para filtrar por día. */
+  startsAt: string;
 };
 
 /** Adapta un turno real de Supabase a la fila que consume la agenda del portal. */
@@ -45,6 +49,7 @@ function toAppt(a: Appointment): Appt {
       : 'neutral';
   return {
     id: a.id,
+    patientId: a.patientId,
     time,
     dur: `${a.durationMin} min`,
     // Nombre real del paciente (join con `profiles` vía el feature); si el embed
@@ -53,6 +58,8 @@ function toAppt(a: Appointment): Appt {
     tag: a.type.toUpperCase(),
     tagTone,
     note: a.note,
+    status: a.status,
+    startsAt: a.startsAt,
   };
 }
 
@@ -117,12 +124,24 @@ function toPatientRow(p: DentistPatient, index: number): Patient {
   };
 }
 
-const DAYS = [
-  { id: 'd12', day: 'LUN', date: 12 },
-  { id: 'd13', day: 'MAR', date: 13, active: true },
-  { id: 'd14', day: 'MIÉ', date: 14, dot: true },
-  { id: 'd15', day: 'JUE', date: 15 },
-];
+/** Medianoche local de una fecha (base para comparar y filtrar por día). */
+function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+const DAY_LABELS = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'] as const;
+
+type DayCell = { key: number; label: string; date: number };
+
+/** Los próximos `n` días reales a partir de hoy, para el selector de la agenda. */
+function buildDays(n: number): DayCell[] {
+  const today = startOfDay(new Date());
+  return Array.from({ length: n }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    return { key: d.getTime(), label: DAY_LABELS[d.getDay()], date: d.getDate() };
+  });
+}
 
 const TAG_TONE = {
   teal: { bg: palette.tealSoft, fg: palette.tealDark },
@@ -130,16 +149,71 @@ const TAG_TONE = {
   neutral: { bg: palette.surfaceAlt, fg: palette.textSecondary },
 };
 
+/** Estado del turno → badge, para turnos ya cerrados (sin acciones). */
+const APPT_STATUS_BADGE: Record<AppointmentStatus, { label: string; tone: Patient['statusTone'] }> =
+  PATIENT_STATUS;
+
 export default function PortalScreen() {
   const router = useRouter();
   const { user } = useAuth();
+
+  // Nombre real del odontólogo (metadata de auth); si no está, saludo genérico.
+  const dentistName: string = user?.user_metadata?.full_name ?? 'profesional';
 
   // Turnos y pacientes reales del odontólogo desde Supabase (vía el feature, nunca directo).
   const { appointments } = useDentistAppointments(user?.id);
   const { patients } = useDentistPatients(user?.id);
 
-  const schedule: Appt[] = appointments.map(toAppt);
+  // Copia local editable de los turnos: permite actualización optimista al
+  // confirmar/completar/cancelar sin re-fetchear toda la agenda.
+  const [items, setItems] = useState<Appointment[]>([]);
+  useEffect(() => {
+    setItems(appointments);
+  }, [appointments]);
+
+  const { run: runStatus, pending } = useUpdateAppointmentStatus();
+
+  const days = useMemo(() => buildDays(5), []);
+  const [selectedDay, setSelectedDay] = useState<number>(() => startOfDay(new Date()).getTime());
+
+  const schedule: Appt[] = items.map(toAppt);
   const patientRows: Patient[] = patients.map(toPatientRow);
+
+  // Métricas reales derivadas de los turnos (sin deltas inventados).
+  const { todayCount, weekCount } = useMemo(() => {
+    const todayStart = startOfDay(new Date()).getTime();
+    const weekEnd = todayStart + 7 * 86_400_000;
+    let today = 0;
+    let week = 0;
+    for (const a of items) {
+      const day = startOfDay(new Date(a.startsAt)).getTime();
+      if (day === todayStart) today += 1;
+      if (day >= todayStart && day < weekEnd) week += 1;
+    }
+    return { todayCount: today, weekCount: week };
+  }, [items]);
+
+  // Turnos del día seleccionado, ordenados por hora.
+  const daySchedule = schedule.filter(
+    (a) => startOfDay(new Date(a.startsAt)).getTime() === selectedDay,
+  );
+
+  /** Cambia el estado de un turno con UI optimista + reversión suave ante error. */
+  async function handleStatus(id: string, status: AppointmentStatus) {
+    const snapshot = items;
+    setItems((cur) => cur.map((a) => (a.id === id ? { ...a, status } : a)));
+    try {
+      const updated = await runStatus(id, status);
+      // Reconciliamos con lo que devuelve el servidor (fuente de verdad).
+      setItems((cur) => cur.map((a) => (a.id === id ? updated : a)));
+    } catch {
+      setItems(snapshot); // revertir
+      Alert.alert('No se pudo actualizar el turno', 'Revisá tu conexión e intentá de nuevo.');
+    }
+  }
+
+  const goToPatient = (id: string, name: string) =>
+    router.push({ pathname: '/patient/[id]', params: { id, name } });
 
   return (
     <ScreenContainer scroll padded={false} edges={[]} background={palette.background}>
@@ -163,13 +237,14 @@ export default function PortalScreen() {
       <View style={styles.body}>
         {/* Saludo + CTA */}
         <Reveal index={0}>
-          <Text style={styles.greeting}>Buen día, Dr. Smith</Text>
+          <Text style={styles.greeting}>Buen día, {dentistName}</Text>
           <Text style={styles.subGreeting}>Este es el resumen de tu clínica para hoy.</Text>
           <Button
             label="Nuevo Turno"
             fullWidth={false}
             size="md"
             left={<Ionicons name="add" size={20} color={palette.white} />}
+            // TODO(fuera de scope): pantalla de creación de turno del portal.
             onPress={() => {}}
             accessibilityLabel="Crear un nuevo turno"
             style={styles.newBtn}
@@ -193,37 +268,56 @@ export default function PortalScreen() {
           </PressableCard>
         </Reveal>
 
-        {/* Métricas */}
+        {/* Accesos rápidos del portal */}
         <Reveal index={2}>
-          <View style={styles.metricsRow}>
-            <MetricCard icon="calendar-outline" label="Turnos hoy" value="14" delta="12%" progress={0.75} tone={palette.primary} gradient={[palette.teal, palette.primary]} />
-            <MetricCard icon="clipboard-outline" label="Turnos semana" value="68" delta="5%" progress={0.6} tone={palette.teal} gradient={[palette.primary, palette.navy]} />
+          <View style={styles.quickRow}>
+            <PressableCard
+              onPress={() => router.push('/portal-profile')}
+              accessibilityLabel="Mi perfil profesional"
+              style={styles.quickCard}>
+              <GradientIcon gradient={[palette.teal, palette.primary]} size={40}>
+                <Ionicons name="person-outline" size={20} color={palette.white} />
+              </GradientIcon>
+              <Text style={styles.quickTitle}>Mi perfil</Text>
+              <Text style={styles.quickSub}>Tu perfil profesional</Text>
+            </PressableCard>
+            <PressableCard
+              onPress={() => router.push('/portal-videos')}
+              accessibilityLabel="Cargar videos educativos"
+              style={styles.quickCard}>
+              <GradientIcon gradient={[palette.primary, palette.navy]} size={40}>
+                <Ionicons name="videocam-outline" size={20} color={palette.white} />
+              </GradientIcon>
+              <Text style={styles.quickTitle}>Videos</Text>
+              <Text style={styles.quickSub}>Contenido educativo</Text>
+            </PressableCard>
           </View>
         </Reveal>
 
-        {/* Ingresos */}
+        {/* Métricas reales */}
         <Reveal index={3}>
-          <LinearGradient colors={[palette.primary, palette.primaryDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.revenue, shadow.card]}>
-            <View style={styles.revenueTop}>
-              <View style={styles.revenueIcon}>
-                <MaterialCommunityIcons name="wallet-outline" size={22} color={palette.white} />
-              </View>
-              <View style={styles.revenueBadge}>
-                <Ionicons name="arrow-up" size={12} color={palette.white} />
-                <Text style={styles.revenueBadgeText}>18% vs mes pasado</Text>
-              </View>
-            </View>
-            <Text style={styles.revenueLabel}>Ingresos del mes</Text>
-            <Text style={styles.revenueValue}>$42,500</Text>
-          </LinearGradient>
+          <View style={styles.metricsRow}>
+            <MetricCard
+              icon="calendar-outline"
+              label="Turnos hoy"
+              value={String(todayCount)}
+              gradient={[palette.teal, palette.primary]}
+            />
+            <MetricCard
+              icon="clipboard-outline"
+              label="Próximos 7 días"
+              value={String(weekCount)}
+              gradient={[palette.primary, palette.navy]}
+            />
+          </View>
         </Reveal>
 
-        {/* Agenda de hoy */}
+        {/* Agenda */}
         <Reveal index={4}>
           <View style={styles.sectionHeader}>
             <View style={styles.headingRow}>
               <View style={styles.accentBar} />
-              <Text style={styles.sectionTitle}>Agenda de Hoy</Text>
+              <Text style={styles.sectionTitle}>Agenda</Text>
             </View>
             <Pressable
               accessibilityRole="button"
@@ -236,26 +330,40 @@ export default function PortalScreen() {
 
           <Card style={styles.scheduleCard}>
             <View style={styles.daysRow}>
-              <Ionicons name="chevron-back" size={18} color={palette.textSecondary} />
-              {DAYS.map((d) => (
-                <View key={d.id} style={[styles.dayCard, d.active && styles.dayActive]}>
-                  <Text style={[styles.dayLabel, d.active && styles.dayTextActive]}>{d.day}</Text>
-                  <Text style={[styles.dayNum, d.active && styles.dayTextActive]}>{d.date}</Text>
-                  {d.dot && <View style={styles.dayDot} />}
-                </View>
-              ))}
-              <Ionicons name="chevron-forward" size={18} color={palette.textSecondary} />
+              {days.map((d) => {
+                const active = d.key === selectedDay;
+                return (
+                  <Pressable
+                    key={d.key}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Ver turnos del ${d.label} ${d.date}`}
+                    accessibilityState={{ selected: active }}
+                    onPress={() => setSelectedDay(d.key)}
+                    style={[styles.dayCard, active && styles.dayActive]}>
+                    <Text style={[styles.dayLabel, active && styles.dayTextActive]}>{d.label}</Text>
+                    <Text style={[styles.dayNum, active && styles.dayTextActive]}>{d.date}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
 
             <View style={styles.divider} />
 
-            {schedule.length > 0 ? (
-              schedule.map((a) => <ScheduleItem key={a.id} appt={a} />)
+            {daySchedule.length > 0 ? (
+              daySchedule.map((a) => (
+                <ScheduleItem
+                  key={a.id}
+                  appt={a}
+                  busyStatus={pending?.id === a.id ? pending.status : null}
+                  onPressPatient={() => goToPatient(a.patientId, a.name)}
+                  onAction={(status) => handleStatus(a.id, status)}
+                />
+              ))
             ) : (
               <EmptyState
                 icon="calendar-outline"
-                title="No tenés turnos agendados"
-                subtitle="Cuando agendes turnos, aparecerán acá."
+                title="No hay turnos este día"
+                subtitle="Elegí otro día o esperá a que se agenden nuevos turnos."
               />
             )}
           </Card>
@@ -284,7 +392,12 @@ export default function PortalScreen() {
                   <Text style={styles.patientsHeadText}>Estado</Text>
                 </View>
                 {patientRows.map((p) => (
-                  <View key={p.id} style={styles.patientRow}>
+                  <Pressable
+                    key={p.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Ver ficha de ${p.name}`}
+                    onPress={() => goToPatient(p.id, p.name)}
+                    style={({ pressed }) => [styles.patientRow, pressed && styles.rowPressed]}>
                     <View style={styles.patientLeft}>
                       <View style={[styles.patientAvatar, { backgroundColor: p.color }]}>
                         <Text style={styles.patientInitials}>{p.initials}</Text>
@@ -295,8 +408,9 @@ export default function PortalScreen() {
                       </View>
                     </View>
                     <Badge label={`● ${p.statusLabel}`} tone={p.statusTone} />
-                  </View>
+                  </Pressable>
                 ))}
+                {/* TODO(fuera de scope): pantalla de listado completo de pacientes. */}
                 <Button label="Ver todos los pacientes" variant="outline" onPress={() => {}} style={styles.allBtn} />
               </>
             ) : (
@@ -317,35 +431,20 @@ function MetricCard({
   icon,
   label,
   value,
-  delta,
-  progress,
-  tone,
   gradient,
 }: {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   label: string;
   value: string;
-  delta: string;
-  progress: number;
-  tone: string;
   gradient: readonly [string, string];
 }) {
   return (
     <Card style={styles.metric}>
-      <View style={styles.metricTop}>
-        <GradientIcon gradient={gradient} size={40}>
-          <Ionicons name={icon} size={22} color={palette.white} />
-        </GradientIcon>
-        <View style={styles.deltaBadge}>
-          <Ionicons name="trending-up" size={13} color={palette.success} />
-          <Text style={styles.deltaText}>{delta}</Text>
-        </View>
-      </View>
+      <GradientIcon gradient={gradient} size={40}>
+        <Ionicons name={icon} size={22} color={palette.white} />
+      </GradientIcon>
       <Text style={styles.metricLabel}>{label}</Text>
       <Text style={styles.metricValue}>{value}</Text>
-      <View style={styles.metricTrack}>
-        <View style={[styles.metricFill, { width: `${progress * 100}%`, backgroundColor: tone }]} />
-      </View>
     </Card>
   );
 }
@@ -370,19 +469,38 @@ function EmptyState({
   );
 }
 
-function ScheduleItem({ appt }: { appt: Appt }) {
+function ScheduleItem({
+  appt,
+  busyStatus,
+  onPressPatient,
+  onAction,
+}: {
+  appt: Appt;
+  /** Estado que se está aplicando ahora sobre este turno, o null si no hay nada en curso. */
+  busyStatus: AppointmentStatus | null;
+  onPressPatient: () => void;
+  onAction: (status: AppointmentStatus) => void;
+}) {
   const tone = TAG_TONE[appt.tagTone];
+  const busy = busyStatus !== null;
+  const closed = appt.status === 'completado' || appt.status === 'cancelado';
+  const badge = APPT_STATUS_BADGE[appt.status];
+
   return (
     <View style={styles.apptRow}>
       <View style={styles.apptTimeCol}>
-        <Text style={[styles.apptTime, appt.primary && { color: palette.primary }]}>{appt.time}</Text>
+        <Text style={styles.apptTime}>{appt.time}</Text>
         <Text style={styles.apptDur}>{appt.dur}</Text>
       </View>
       <View style={styles.apptTimeline}>
-        <View style={[styles.apptNode, appt.primary && styles.apptNodeActive]} />
+        <View style={[styles.apptNode, appt.status === 'confirmado' && styles.apptNodeActive]} />
         <View style={styles.apptLine} />
       </View>
-      <View style={[styles.apptCard, appt.primary && styles.apptCardPrimary]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Ver ficha de ${appt.name}`}
+        onPress={onPressPatient}
+        style={({ pressed }) => [styles.apptCard, pressed && styles.rowPressed]}>
         <View style={styles.apptCardTop}>
           <Text style={styles.apptName}>{appt.name}</Text>
           <View style={[styles.apptTag, { backgroundColor: tone.bg }]}>
@@ -390,22 +508,48 @@ function ScheduleItem({ appt }: { appt: Appt }) {
           </View>
         </View>
         {appt.note && <Text style={styles.apptNote}>{appt.note}</Text>}
-        {appt.scanReady && (
-          <View style={styles.scanRow}>
-            <MaterialCommunityIcons name="tooth-outline" size={15} color={palette.teal} />
-            <Text style={styles.scanText}>AI Scan listo</Text>
+
+        {closed ? (
+          <View style={styles.apptStatusRow}>
+            <Badge label={badge.label} tone={badge.tone} />
+          </View>
+        ) : (
+          <View style={styles.apptActions}>
+            {appt.status === 'pendiente' && (
+              <Button
+                label="Confirmar"
+                size="md"
+                fullWidth={false}
+                loading={busyStatus === 'confirmado'}
+                disabled={busy}
+                onPress={() => onAction('confirmado')}
+                style={styles.apptActionBtn}
+              />
+            )}
+            {appt.status === 'confirmado' && (
+              <Button
+                label="Completar"
+                size="md"
+                fullWidth={false}
+                loading={busyStatus === 'completado'}
+                disabled={busy}
+                onPress={() => onAction('completado')}
+                style={styles.apptActionBtn}
+              />
+            )}
+            <Button
+              label="Cancelar"
+              variant="outline"
+              size="md"
+              fullWidth={false}
+              loading={busyStatus === 'cancelado'}
+              disabled={busy}
+              onPress={() => onAction('cancelado')}
+              style={styles.apptActionBtn}
+            />
           </View>
         )}
-        {appt.primary && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Iniciar sesión con ${appt.name}`}
-            style={({ pressed }) => [styles.startBtn, pressed && styles.startBtnPressed]}>
-            <Ionicons name="play" size={14} color={palette.white} />
-            <Text style={styles.startBtnText}>Iniciar sesión</Text>
-          </Pressable>
-        )}
-      </View>
+      </Pressable>
     </View>
   );
 }
@@ -446,46 +590,15 @@ const styles = StyleSheet.create({
   credTitle: { ...typography.bodyStrong, color: palette.textPrimary },
   credSub: { ...typography.caption, color: palette.textSecondary, marginTop: 2 },
 
+  quickRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.md },
+  quickCard: { flex: 1, gap: spacing.sm },
+  quickTitle: { ...typography.bodyStrong, color: palette.textPrimary, marginTop: spacing.xs },
+  quickSub: { ...typography.caption, color: palette.textSecondary },
+
   metricsRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
-  metric: { flex: 1 },
-  metricTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  deltaBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: palette.successSoft,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-  },
-  deltaText: { ...typography.caption, color: palette.success, fontWeight: '700' },
+  metric: { flex: 1, gap: spacing.xs },
   metricLabel: { ...typography.caption, color: palette.textSecondary, marginTop: spacing.md },
   metricValue: { ...typography.h1, fontSize: 30, color: palette.textPrimary, marginTop: 2 },
-  metricTrack: { height: 6, borderRadius: radius.pill, backgroundColor: palette.surfaceAlt, marginTop: spacing.md, overflow: 'hidden' },
-  metricFill: { height: '100%', borderRadius: radius.pill },
-
-  revenue: { borderRadius: radius.xl, padding: spacing['2xl'], marginTop: spacing.lg },
-  revenueTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  revenueIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  revenueBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-  },
-  revenueBadgeText: { ...typography.small, color: palette.white, fontWeight: '700' },
-  revenueLabel: { ...typography.body, color: 'rgba(255,255,255,0.85)', marginTop: spacing.lg },
-  revenueValue: { fontSize: 34, fontWeight: '800', color: palette.white, marginTop: 2 },
 
   sectionHeader: {
     flexDirection: 'row',
@@ -509,13 +622,14 @@ const styles = StyleSheet.create({
 
   scheduleCard: {},
   daysRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  dayCard: { alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, gap: 2 },
+  dayCard: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm, borderRadius: radius.md, gap: 2 },
   dayActive: { backgroundColor: palette.primary },
   dayLabel: { ...typography.small, color: palette.textSecondary, fontWeight: '700' },
   dayNum: { ...typography.subtitle, color: palette.textPrimary },
   dayTextActive: { color: palette.white },
-  dayDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: palette.danger, position: 'absolute', top: 4, right: 8 },
   divider: { height: 1, backgroundColor: palette.border, marginVertical: spacing.lg },
+
+  rowPressed: { opacity: 0.7 },
 
   apptRow: { flexDirection: 'row', gap: spacing.sm },
   apptTimeCol: { width: 52, alignItems: 'flex-start' },
@@ -525,8 +639,9 @@ const styles = StyleSheet.create({
   apptNode: { width: 10, height: 10, borderRadius: 5, backgroundColor: palette.border, marginTop: 4 },
   apptNodeActive: { backgroundColor: palette.primary },
   apptLine: { flex: 1, width: 2, backgroundColor: palette.border, marginTop: 2 },
-  apptCard: { flex: 1, borderRadius: radius.md, paddingBottom: spacing.lg },
-  apptCardPrimary: {
+  apptCard: {
+    flex: 1,
+    borderRadius: radius.md,
     backgroundColor: palette.primarySoft,
     borderWidth: 1,
     borderColor: palette.primaryLight,
@@ -538,20 +653,9 @@ const styles = StyleSheet.create({
   apptTag: { borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 3 },
   apptTagText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
   apptNote: { ...typography.caption, color: palette.textSecondary, marginTop: 4 },
-  scanRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  scanText: { ...typography.caption, color: palette.teal, fontWeight: '600' },
-  startBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: palette.primary,
-    borderRadius: radius.pill,
-    paddingVertical: spacing.md,
-    marginTop: spacing.md,
-  },
-  startBtnPressed: { opacity: 0.85, transform: [{ scale: 0.99 }] },
-  startBtnText: { ...typography.bodyStrong, color: palette.white },
+  apptStatusRow: { flexDirection: 'row', marginTop: spacing.md },
+  apptActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  apptActionBtn: { flex: 1 },
 
   patientsCard: {},
   patientsHead: { flexDirection: 'row', justifyContent: 'space-between', paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: palette.border },

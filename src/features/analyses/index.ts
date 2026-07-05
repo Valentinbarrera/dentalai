@@ -6,12 +6,13 @@
 export {
   createAnalysis,
   getAnalysis,
+  listAnalysesForUser,
   listMyAnalyses,
   requestAnalysis,
   uploadCaptures,
 } from './services/analyses-service';
-export { useMyAnalyses } from './hooks/use-analyses';
-export type { UseMyAnalysesResult } from './hooks/use-analyses';
+export { useMyAnalyses, useUserAnalyses } from './hooks/use-analyses';
+export type { UseMyAnalysesResult, UseUserAnalysesResult } from './hooks/use-analyses';
 export type {
   Analysis,
   AnalysisStatus,

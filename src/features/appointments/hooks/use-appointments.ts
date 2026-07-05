@@ -1,7 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-import { listForDentist, listForPatient, listPatientsForDentist } from '../services/appointments-service';
-import type { Appointment, DentistPatient } from '../types';
+import {
+  listForDentist,
+  listForPatient,
+  listPatientsForDentist,
+  updateStatus,
+} from '../services/appointments-service';
+import type { Appointment, AppointmentStatus, DentistPatient } from '../types';
 
 /** Estado de una lista de turnos: datos, carga y error. */
 type AppointmentsState = {
@@ -89,6 +94,31 @@ export function useDentistPatients(dentistId: string | null | undefined): Dentis
   }, [dentistId]);
 
   return state;
+}
+
+/**
+ * Mutación para cambiar el estado de un turno (confirmar, completar, cancelar).
+ *
+ * No mantiene la lista: devuelve `run` para disparar el cambio y `pending`
+ * (el turno + estado en curso) para que la UI muestre loading/disabled sobre la
+ * acción correcta. La agenda del portal maneja el estado optimista de la lista.
+ */
+export function useUpdateAppointmentStatus() {
+  const [pending, setPending] = useState<{ id: string; status: AppointmentStatus } | null>(null);
+
+  const run = useCallback(
+    async (id: string, status: AppointmentStatus): Promise<Appointment> => {
+      setPending({ id, status });
+      try {
+        return await updateStatus(id, status);
+      } finally {
+        setPending(null);
+      }
+    },
+    [],
+  );
+
+  return { run, pending };
 }
 
 /** Turnos de un paciente. Se recargan cuando cambia `patientId`. */

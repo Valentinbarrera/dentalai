@@ -3,7 +3,7 @@
  * El resto de la app importa siempre desde acá (`@/features/videos`),
  * nunca de los archivos internos.
  */
-export { listVideos } from './services/videos-service';
-export { useVideos } from './hooks/use-videos';
-export type { UseVideosResult } from './hooks/use-videos';
-export type { Video } from './types';
+export { listVideos, createVideo, listMyVideos, deleteVideo } from './services/videos-service';
+export { useVideos, useMyVideos } from './hooks/use-videos';
+export type { UseVideosResult, UseMyVideosResult } from './hooks/use-videos';
+export type { Video, CreateVideoInput } from './types';

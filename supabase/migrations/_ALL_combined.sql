@@ -349,6 +349,58 @@ create policy "videos: lectura pública para autenticados"
   to authenticated
   using (true);
 
--- Nota: sin policies de insert/update/delete para usuarios comunes.
--- La carga de contenido se hace por panel/admin (rol de servicio).
+-- Nota: la lectura es pública para autenticados; la escritura la habilita 0008
+-- (autoría + permisos del odontólogo).
+
+
+-- >>>>>>>>>> 0008_dentist_portal.sql <<<<<<<<<<
+-- Portal del odontólogo: ve análisis de sus pacientes, perfil profesional
+-- (bio+foto) y gestión de videos propios.
+
+-- 1) El odontólogo ve los análisis de sus pacientes (turno compartido).
+drop policy if exists "análisis: el odontólogo ve los de sus pacientes" on public.analyses;
+create policy "análisis: el odontólogo ve los de sus pacientes"
+  on public.analyses for select
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.appointments a
+      where a.dentist_id = auth.uid()
+        and a.patient_id = analyses.user_id
+    )
+  );
+
+-- 2) Perfil profesional: bio + foto.
+alter table public.profiles add column if not exists bio        text;
+alter table public.profiles add column if not exists avatar_url text;
+
+-- 3) Videos: autor + gestión por el odontólogo (lectura pública ya en 0007).
+alter table public.videos
+  add column if not exists author_id uuid references auth.users (id) on delete set null;
+
+drop policy if exists "videos: el odontólogo carga" on public.videos;
+create policy "videos: el odontólogo carga"
+  on public.videos for insert
+  to authenticated
+  with check (
+    author_id = auth.uid()
+    and exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.role = 'odontologo'
+    )
+  );
+
+drop policy if exists "videos: el autor edita" on public.videos;
+create policy "videos: el autor edita"
+  on public.videos for update
+  to authenticated
+  using (author_id = auth.uid())
+  with check (author_id = auth.uid());
+
+drop policy if exists "videos: el autor borra" on public.videos;
+create policy "videos: el autor borra"
+  on public.videos for delete
+  to authenticated
+  using (author_id = auth.uid());
 
