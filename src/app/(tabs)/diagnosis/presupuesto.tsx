@@ -5,22 +5,29 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Badge } from '@/components/ui/badge';
 import { BrandBand } from '@/components/ui/brand-band';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { GradientIcon } from '@/components/ui/gradient-icon';
 import { Reveal } from '@/components/ui/reveal';
 import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
-import { getAnalysis, type Analysis, type Budget } from '@/features/analyses';
+import { getAnalysis, type Analysis, type BudgetPlan } from '@/features/analyses';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
+
+/** Formatea un número como "$8.000" (sin decimales, estilo es-AR). */
+function money(n: number): string {
+  return `$${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(n)}`;
+}
 
 export default function PresupuestoScreen() {
   const router = useRouter();
 
-  // El presupuesto real (desglose, resumen, financiación) sale del análisis
-  // guardado en Supabase. Cargamos el análisis vía `analysisId`; sin datos reales
-  // NO mostramos números inventados: caemos en un estado vacío honesto.
-  const { analysisId } = useLocalSearchParams<{ analysisId?: string }>();
+  // El presupuesto real (los 3 planes calculados con precios reales) sale del
+  // análisis guardado en Supabase. Cargamos el análisis vía `analysisId`; sin
+  // datos reales NO mostramos números inventados: caemos en un estado vacío honesto.
+  // `planId` (opcional) viene del comparador e indica qué plan mostrar.
+  const { analysisId, planId } = useLocalSearchParams<{ analysisId?: string; planId?: string }>();
 
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState<boolean>(Boolean(analysisId));
@@ -48,8 +55,11 @@ export default function PresupuestoScreen() {
     };
   }, [analysisId]);
 
-  // Presupuesto real devuelto por la IA. Si no existe, va el estado vacío honesto.
-  const budget = analysis?.result?.budget ?? null;
+  // Los 3 presupuestos reales devueltos por la IA (calculados con el catálogo).
+  // Elegimos el que pidió el comparador (`planId`), o el recomendado, o el primero.
+  const plans = analysis?.result?.plans ?? [];
+  const plan =
+    plans.find((p) => p.id === planId) ?? plans.find((p) => p.recommended) ?? plans[0] ?? null;
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
@@ -71,8 +81,8 @@ export default function PresupuestoScreen() {
             <MaterialCommunityIcons name="alert-circle-outline" size={28} color={palette.textMuted} />
             <Text style={styles.stateText}>No pudimos cargar el presupuesto.</Text>
           </View>
-        ) : budget ? (
-          <PresupuestoContent budget={budget} />
+        ) : plan ? (
+          <PresupuestoContent plan={plan} analysisId={analysisId} />
         ) : (
           <PresupuestoEmpty hasAnalysis={Boolean(analysis)} />
         )}
@@ -81,88 +91,80 @@ export default function PresupuestoScreen() {
   );
 }
 
-/** Presupuesto real: desglose por ítem, resumen (subtotal/total) y financiación. */
-function PresupuestoContent({ budget }: { budget: Budget }) {
-  // La IA produce `budget` con shape libre: blindamos por si faltan `items`/`financing`.
-  const items = budget.items ?? [];
-  const financing = budget.financing ?? [];
-  const hasFinancing = financing.length > 0;
+/** Presupuesto real: desglose por ítem del plan elegido y total destacado. */
+function PresupuestoContent({ plan, analysisId }: { plan: BudgetPlan; analysisId?: string }) {
+  const router = useRouter();
+  // Blindamos por si el plan viniera sin ítems: estado honesto, sin inventar.
+  const items = plan.items ?? [];
 
   return (
     <View style={styles.contentWrap}>
-      {/* Desglose de ítems */}
+      {/* Encabezado del plan elegido */}
       <Reveal index={0}>
+        <View style={styles.planHeader}>
+          {plan.recommended ? <Badge label="Recomendado" tone="success" /> : null}
+          <Text style={styles.planTitle}>{plan.title}</Text>
+          {plan.description ? <Text style={styles.planDesc}>{plan.description}</Text> : null}
+        </View>
+      </Reveal>
+
+      {/* Desglose de ítems */}
+      <Reveal index={1}>
         <View style={styles.headingRow}>
           <View style={styles.accentBar} />
           <Text style={styles.sectionTitle}>Desglose del tratamiento</Text>
         </View>
 
         <Card style={styles.card}>
-          {items.map((item, i) => (
-            <View
-              key={`${item.label}-${i}`}
-              style={[styles.itemRow, i > 0 && styles.itemRowBordered]}>
-              <View style={styles.itemMain}>
-                <View style={styles.itemLabelRow}>
-                  {item.qty ? (
-                    <View style={styles.qtyChip}>
-                      <Text style={styles.qtyChipText}>{item.qty}</Text>
-                    </View>
-                  ) : null}
-                  <Text style={styles.itemLabel}>{item.label}</Text>
-                </View>
-                {item.note ? <Text style={styles.itemNote}>{item.note}</Text> : null}
-              </View>
-              <Text style={styles.itemPrice}>{item.price}</Text>
-            </View>
-          ))}
-        </Card>
-      </Reveal>
-
-      {/* Resumen: subtotal + total destacado */}
-      <Reveal index={1}>
-        <Card style={styles.summaryCard} flat>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>{budget.subtotal}</Text>
-          </View>
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryRow}>
-            <Text style={styles.totalLabel}>Total estimado</Text>
-            <Text style={styles.totalValue}>{budget.total}</Text>
-          </View>
-        </Card>
-      </Reveal>
-
-      {/* Financiación */}
-      {hasFinancing ? (
-        <Reveal index={2}>
-          <View style={styles.headingRow}>
-            <View style={styles.accentBar} />
-            <Text style={styles.sectionTitle}>Financiación</Text>
-          </View>
-
-          <Card style={styles.card}>
-            {financing.map((fin, i) => (
+          {items.length > 0 ? (
+            items.map((item, i) => (
               <View
-                key={`${fin.months}-${i}`}
-                style={[styles.finRow, i > 0 && styles.itemRowBordered]}>
-                <View style={styles.finIcon}>
-                  <MaterialCommunityIcons name="calendar-month" size={18} color={palette.primary} />
+                key={`${item.procedureId}-${i}`}
+                style={[styles.itemRow, i > 0 && styles.itemRowBordered]}>
+                <View style={styles.qtyChip}>
+                  <Text style={styles.qtyChipText}>{item.qty}×</Text>
                 </View>
                 <View style={styles.itemMain}>
-                  <Text style={styles.finMonths}>{fin.months}</Text>
-                  {fin.note ? <Text style={styles.itemNote}>{fin.note}</Text> : null}
+                  <Text style={styles.itemLabel}>{item.name}</Text>
+                  <Text style={styles.itemNote}>{money(item.unitPrice)} c/u</Text>
                 </View>
-                <Text style={styles.finMonthly}>{fin.monthly}</Text>
+                <Text style={styles.itemPrice}>{money(item.lineTotal)}</Text>
               </View>
-            ))}
-          </Card>
-        </Reveal>
-      ) : null}
+            ))
+          ) : (
+            <Text style={styles.itemNote}>
+              Este plan todavía no tiene ítems detallados.
+            </Text>
+          )}
+        </Card>
+      </Reveal>
+
+      {/* Total destacado */}
+      <Reveal index={2}>
+        <Card style={styles.summaryCard} flat>
+          <View style={styles.summaryRow}>
+            <Text style={styles.totalLabel}>Total estimado</Text>
+            <Text style={styles.totalValue}>{money(plan.total)}</Text>
+          </View>
+        </Card>
+      </Reveal>
+
+      {/* Ver opciones de pago */}
+      <Reveal index={3}>
+        <Button
+          label="Ver opciones de pago"
+          left={<Ionicons name="card-outline" size={18} color={palette.white} />}
+          onPress={() =>
+            router.push({
+              pathname: '/diagnosis/pago-opciones',
+              params: analysisId ? { analysisId } : {},
+            })
+          }
+        />
+      </Reveal>
 
       {/* Aviso: estimación orientativa, no cotización final */}
-      <Reveal index={3}>
+      <Reveal index={4}>
         <View style={styles.disclaimer}>
           <MaterialCommunityIcons name="information-outline" size={16} color={palette.textMuted} />
           <Text style={styles.disclaimerText}>
@@ -187,7 +189,7 @@ function PresupuestoEmpty({ hasAnalysis }: { hasAnalysis: boolean }) {
       <Text style={styles.emptyTitle}>Todavía no hay un presupuesto</Text>
       <Text style={styles.emptyDesc}>
         {hasAnalysis
-          ? 'Cuando la IA calcule tu plan de tratamiento vas a ver acá el desglose, el total y las opciones de financiación.'
+          ? 'Cuando la IA calcule tu plan de tratamiento vas a ver acá el desglose y el total.'
           : 'Hacé tu análisis con IA para recibir un presupuesto detallado y personalizado para tu caso.'}
       </Text>
       <Button
@@ -208,6 +210,11 @@ const styles = StyleSheet.create({
   // Presupuesto real.
   contentWrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.xl, gap: spacing.lg },
 
+  // Encabezado del plan elegido.
+  planHeader: { gap: spacing.sm },
+  planTitle: { ...typography.h2, fontSize: 22, color: palette.textPrimary },
+  planDesc: { ...typography.body, color: palette.textSecondary },
+
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   accentBar: { width: 4, height: 18, borderRadius: radius.pill, backgroundColor: palette.teal },
   sectionTitle: { ...typography.h2, fontSize: 20, color: palette.textPrimary },
@@ -218,7 +225,6 @@ const styles = StyleSheet.create({
   itemRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, paddingVertical: spacing.md },
   itemRowBordered: { borderTopWidth: 1, borderTopColor: palette.border },
   itemMain: { flex: 1 },
-  itemLabelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   qtyChip: {
     backgroundColor: palette.primarySoft,
     borderRadius: radius.sm,
@@ -233,24 +239,8 @@ const styles = StyleSheet.create({
   // Resumen.
   summaryCard: { padding: spacing.lg, backgroundColor: palette.primarySoft, borderColor: palette.primaryLight },
   summaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  summaryLabel: { ...typography.body, color: palette.textSecondary },
-  summaryValue: { ...typography.bodyStrong, color: palette.textPrimary },
-  summaryDivider: { height: 1, backgroundColor: palette.primaryLight, marginVertical: spacing.md },
   totalLabel: { ...typography.subtitle, color: palette.textPrimary },
   totalValue: { ...typography.h2, fontSize: 24, color: palette.primary },
-
-  // Financiación.
-  finRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
-  finIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    backgroundColor: palette.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  finMonths: { ...typography.bodyStrong, color: palette.textPrimary },
-  finMonthly: { ...typography.bodyStrong, color: palette.primary },
 
   // Aviso legal / orientativo.
   disclaimer: {

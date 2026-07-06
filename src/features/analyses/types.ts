@@ -51,6 +51,36 @@ export type Budget = {
   financing: FinancingOption[];
 };
 
+/**
+ * Una línea de un plan de presupuesto, ya CALCULADA por el backend contra el
+ * catálogo de precios (`procedures`). `name` y `unitPrice` salen del catálogo
+ * (fuente de verdad, editable por el admin), NO de la IA. `lineTotal = unitPrice * qty`.
+ */
+export type BudgetPlanItem = {
+  procedureId: string;
+  name: string;
+  qty: number;
+  unitPrice: number;
+  lineTotal: number;
+};
+
+/**
+ * Uno de los 3 presupuestos (A/B/C) que resuelven el mismo problema. La IA elige
+ * los ítems y cantidades del catálogo; el backend calcula `total` (suma de
+ * `lineTotal`). Los montos NUNCA los inventa la IA.
+ */
+export type BudgetPlan = {
+  id: string;
+  title: string;
+  description: string;
+  recommended?: boolean;
+  items: BudgetPlanItem[];
+  /** Total calculado por el backend (en `currency`). */
+  total: number;
+  /** Moneda del catálogo (ej. "USD"). */
+  currency?: string;
+};
+
 /** Un plan de pago concreto (pago completo, cuotas bancarias, financiación interna). */
 export type PaymentPlan = {
   id: string;
@@ -81,6 +111,11 @@ export type DiagnosisResult = {
   healthScore?: HealthScore;
   budget?: Budget;
   paymentPlans?: PaymentPlan[];
+  /**
+   * Los 3 presupuestos calculados con el catálogo de precios real (Fase B).
+   * Cada uno resuelve el mismo problema con distinta relación costo/beneficio.
+   */
+  plans?: BudgetPlan[];
 };
 
 /** Una fila de la tabla `analyses`: un scan del paciente y su diagnóstico. */

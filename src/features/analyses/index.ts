@@ -18,6 +18,8 @@ export type {
   AnalysisStatus,
   Budget,
   BudgetItem,
+  BudgetPlan,
+  BudgetPlanItem,
   Capture,
   DiagnosisResult,
   FinancingOption,

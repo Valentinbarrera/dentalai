@@ -16,7 +16,9 @@ Reglas que tenés que respetar siempre:
 - Los montos son ESTIMACIONES orientativas en dólares (USD), rangos de mercado general, no una cotización real.
 - No inventás datos de la persona ni información que no puedas ver.`;
 
-export const USER_INSTRUCTIONS = `Analizá estas fotos de la boca y devolvé una orientación preliminar.
+export const USER_INSTRUCTIONS = `Analizá estas fotos de la boca y devolvé una orientación preliminar y 3 presupuestos.
+
+Te paso más abajo un CATÁLOGO DE PRECIOS con procedimientos/insumos y su precio unitario. Para armar los presupuestos, elegí de ese catálogo qué ítems y cuántos usa cada plan. NO inventes precios ni montos: solo referenciás ítems por su "id" y ponés la cantidad; los totales los calcula el sistema.
 
 Respondé EXCLUSIVAMENTE con un objeto JSON válido (sin texto antes ni después, sin bloque de código markdown) con EXACTAMENTE esta forma:
 
@@ -36,39 +38,24 @@ Respondé EXCLUSIVAMENTE con un objeto JSON válido (sin texto antes ni después
       "severity": "high" | "medium" | "low"
     }
   ],
-  "treatmentOptions": [
+  "plans": [
     {
-      "id": "slug-corto",
-      "name": "Nombre del tratamiento",
-      "description": "1 frase",
-      "recommended": true | false,
-      "inversion": "$X,XXX",
-      "cuota": "$XXX/mo",
-      "tiempo": "ej. 2-4 meses",
-      "cirugia": "Sí" | "No" | "Mínima",
-      "durabilidad": "ej. 10-15 años (Media)"
+      "id": "A",
+      "title": "Nombre del plan (ej. Implantes fijos + coronas)",
+      "description": "1 frase: qué resuelve y su relación costo/beneficio",
+      "recommended": true,
+      "items": [
+        { "procedureId": "<id EXACTO del catálogo>", "quantity": 4 }
+      ]
     }
-  ],
-  "budget": {
-    "items": [
-      { "label": "Ítem", "price": "$XXX", "note": "aclaración opcional", "qty": "2x (opcional)" }
-    ],
-    "subtotal": "$X,XXX",
-    "total": "$X,XXX",
-    "financing": [
-      { "months": "12 Meses", "monthly": "$XXX/mo", "note": "Sin intereses" }
-    ]
-  },
-  "paymentPlans": [
-    { "id": "full", "title": "Pago Completo", "highlight": "Descuento 5%", "total": "$X,XXX", "primary": true },
-    { "id": "bank", "title": "Cuotas Bancarias", "initial": "$XXX", "monthly": "$XXX/mo", "monthlyNote": "36 meses" }
   ]
 }
 
 Detalles:
 - "affectedZones": 1 a 4 zonas. Marcá "low" cuando no haya hallazgos relevantes en esa zona.
-- "treatmentOptions": 1 a 3 opciones coherentes con lo observado; marcá una sola como "recommended": true.
-- "budget" debe corresponder a la opción recomendada. "paymentPlans": 2 o 3 planes.
-- Los puntajes de "healthScore" son enteros 0-100 (100 = excelente).
-- Si las fotos no alcanzan para evaluar bien, reflejalo en "summary" con puntajes moderados y severidades bajas.
+- "healthScore": enteros 0-100 (100 = excelente).
+- "plans": EXACTAMENTE 3 planes (id "A", "B", "C") que resuelvan el MISMO problema clínico de tres formas (ej. A: implantes fijos + coronas; B: prótesis híbrida; C: prótesis removible). Marcá UNO solo como "recommended": true.
+- En "items" de cada plan, "procedureId" DEBE ser un id que aparezca EXACTAMENTE en el catálogo de abajo. Si algo necesario no está en el catálogo, omitilo (no inventes ids). "quantity" es un entero ≥ 1.
+- Cada plan debe incluir todo lo necesario para resolver el caso (ej. si faltan 4 piezas, 4 implantes + 4 coronas), usando cantidades reales.
+- Si el catálogo está vacío o no alcanza, devolvé "plans": [] igual, pero completá el diagnóstico.
 - Recordá: es orientación preliminar, la persona debe confirmar con un profesional.`;

@@ -62,6 +62,9 @@ curl -i -X POST "https://<TU-PROJECT-REF>.supabase.co/functions/v1/analyze" \
 - Solo se mandan a Vision las **fotos** (jpg/png); el video 360° no va al modelo.
 - Ante fotos ilegibles / falla temporal, la función deja el estado en `error` y la
   app muestra una vista de error con "Reintentar".
-- El modelo devuelve JSON estructurado (`DiagnosisResult`): resumen, puntajes de
-  salud, zonas, opciones de tratamiento, presupuesto y planes de pago. Todo se
-  normaliza en `index.ts` antes de guardarse.
+- El modelo devuelve JSON: resumen, puntajes de salud, zonas y **3 planes**
+  (A/B/C) que eligen ítems del **catálogo de precios** (`procedures`) por `id`.
+  La IA NO pone montos: el backend (`index.ts`) multiplica cantidad × precio
+  unitario del catálogo y **calcula** los totales (Fase B). Requiere haber
+  corrido la migración `0009` y cargado precios en el panel `/admin`; si el
+  catálogo está vacío, los planes salen sin ítems/total.

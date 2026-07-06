@@ -56,8 +56,89 @@ function clampScore(n: unknown, fallback = 50): number {
   return Math.max(0, Math.min(100, Math.round(v)));
 }
 
-/** Normaliza la respuesta de la IA a un `DiagnosisResult` con severidades válidas. */
-function normalize(raw: Record<string, unknown>): Record<string, unknown> {
+/** Ítem del catálogo de precios (`procedures`). */
+type CatalogItem = {
+  id: string;
+  name: string;
+  category: string | null;
+  unit_price: number | string;
+  unit: string;
+};
+
+/** Formatea un número como precio "$1.800" (sin decimales, estilo es-AR). */
+function money(n: number): string {
+  return `$${Math.round(n).toLocaleString('es-AR')}`;
+}
+
+/**
+ * Calcula los planes con los PRECIOS REALES del catálogo: la IA solo eligió
+ * ids + cantidades; acá multiplicamos cantidad × precio unitario y sumamos.
+ * Los ids que no existan en el catálogo se ignoran (no inventamos precios).
+ */
+function computePlans(raw: Record<string, unknown>, byId: Map<string, CatalogItem>) {
+  const rawPlans = Array.isArray(raw.plans) ? raw.plans : [];
+  const plans = rawPlans.slice(0, 3).map((p: Record<string, unknown>, i: number) => {
+    const rawItems = Array.isArray(p?.items) ? (p.items as Record<string, unknown>[]) : [];
+    const items: {
+      procedureId: string;
+      name: string;
+      qty: number;
+      unitPrice: number;
+      lineTotal: number;
+    }[] = [];
+    let total = 0;
+    for (const it of rawItems) {
+      const proc = byId.get(String(it?.procedureId));
+      if (!proc) continue;
+      const qty = Math.max(1, Math.round(Number(it?.quantity) || 1));
+      const unitPrice = Number(proc.unit_price);
+      const lineTotal = unitPrice * qty;
+      total += lineTotal;
+      items.push({ procedureId: proc.id, name: proc.name, qty, unitPrice, lineTotal });
+    }
+    return {
+      id: String(p?.id ?? String.fromCharCode(65 + i)),
+      title: String(p?.title ?? `Plan ${i + 1}`),
+      description: String(p?.description ?? ''),
+      recommended: Boolean(p?.recommended),
+      items,
+      total,
+      currency: 'USD',
+    };
+  });
+  // Garantizamos exactamente un recomendado (si la IA no marcó, el primero).
+  if (plans.length && !plans.some((p) => p.recommended)) plans[0].recommended = true;
+  return plans;
+}
+
+/** Deriva planes de pago simples del presupuesto recomendado (pantalla de pago). */
+function derivePaymentPlans(plans: ReturnType<typeof computePlans>) {
+  const rec = plans.find((p) => p.recommended) ?? plans[0];
+  if (!rec || rec.total <= 0) return undefined;
+  return [
+    {
+      id: 'full',
+      title: 'Pago Completo',
+      highlight: 'Descuento 5%',
+      total: money(rec.total * 0.95),
+      totalOld: money(rec.total),
+      primary: true,
+    },
+    {
+      id: 'cuotas',
+      title: 'Cuotas sin interés',
+      initial: money(rec.total * 0.2),
+      monthly: money(rec.total / 12),
+      monthlyNote: '12 meses',
+    },
+  ];
+}
+
+/** Normaliza la respuesta de la IA a un `DiagnosisResult`, calculando los planes. */
+function normalize(
+  raw: Record<string, unknown>,
+  byId: Map<string, CatalogItem>,
+): Record<string, unknown> {
   const validSeverity = (s: unknown): Severity =>
     s === 'high' || s === 'medium' || s === 'low' ? s : 'low';
 
@@ -77,13 +158,14 @@ function normalize(raw: Record<string, unknown>): Record<string, unknown> {
     alineacion: clampScore(hs.alineacion),
   };
 
+  const plans = computePlans(raw, byId);
+
   return {
     summary: typeof raw.summary === 'string' ? raw.summary : undefined,
     healthScore,
     affectedZones,
-    treatmentOptions: Array.isArray(raw.treatmentOptions) ? raw.treatmentOptions : [],
-    budget: raw.budget ?? undefined,
-    paymentPlans: Array.isArray(raw.paymentPlans) ? raw.paymentPlans : undefined,
+    plans,
+    paymentPlans: derivePaymentPlans(plans),
   };
 }
 
@@ -171,7 +253,23 @@ Deno.serve(async (req) => {
     }
     if (images.length === 0) throw new Error('No pudimos leer las fotos del scan.');
 
-    // 2) Llamamos a Claude Vision.
+    // 2) Catálogo de precios activo: la IA elige ítems de acá y el back calcula.
+    const { data: catalogRows } = await admin
+      .from('procedures')
+      .select('id, name, category, unit_price, unit')
+      .eq('active', true);
+    const catalog = (catalogRows ?? []) as CatalogItem[];
+    const byId = new Map<string, CatalogItem>(catalog.map((p) => [p.id, p]));
+    const catalogText = catalog.length
+      ? catalog
+          .map(
+            (p) =>
+              `- id:${p.id} | ${p.name}${p.category ? ` (${p.category})` : ''} | $${Number(p.unit_price)} por ${p.unit}`,
+          )
+          .join('\n')
+      : '(catálogo vacío: devolvé "plans": [])';
+
+    // 3) Llamamos a Claude Vision.
     // `thinking: disabled` acelera/abarata la extracción, pero Claude Fable 5
     // rechaza el disabled explícito → en ese caso omitimos el parámetro.
     const requestBody: Record<string, unknown> = {
@@ -183,7 +281,10 @@ Deno.serve(async (req) => {
       messages: [
         {
           role: 'user',
-          content: [...images, { type: 'text', text: USER_INSTRUCTIONS }],
+          content: [
+            ...images,
+            { type: 'text', text: `${USER_INSTRUCTIONS}\n\nCATÁLOGO DE PRECIOS:\n${catalogText}` },
+          ],
         },
       ],
     };
@@ -218,8 +319,8 @@ Deno.serve(async (req) => {
     );
     if (!textBlock?.text) throw new Error('Respuesta vacía del modelo.');
 
-    // 3) Parseamos, normalizamos y guardamos.
-    const result = normalize(parseJson(textBlock.text));
+    // 4) Parseamos, calculamos los planes con el catálogo y guardamos.
+    const result = normalize(parseJson(textBlock.text), byId);
     await setStatus('listo', result);
 
     return json({ status: 'listo', analysisId });
