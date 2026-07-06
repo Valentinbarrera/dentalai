@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Reveal } from '@/components/ui/reveal';
 import { TextureGrid } from '@/components/ui/texture-grid';
 import { RoleSelector, useAuth, type UserRole } from '@/features/auth';
-import { ROUTES } from '@/lib/routes';
+import { homeForRole } from '@/lib/routes';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
 type Mode = 'login' | 'signup';
@@ -74,7 +74,7 @@ export default function LoginScreen() {
         setError(err);
         return shake();
       }
-      router.replace(userRole === 'odontologo' ? ROUTES.portal : ROUTES.home);
+      router.replace(homeForRole(userRole));
     } else {
       const { error: err, needsConfirmation } = await signUp(name, email, password, role);
       setLoading(false);
@@ -86,7 +86,7 @@ export default function LoginScreen() {
         setNotice('Te enviamos un email para confirmar tu cuenta. Revisá tu bandeja.');
         return;
       }
-      router.replace(role === 'odontologo' ? ROUTES.portal : ROUTES.home);
+      router.replace(homeForRole(role));
     }
   };
 

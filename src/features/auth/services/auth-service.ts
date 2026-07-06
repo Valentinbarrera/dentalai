@@ -10,7 +10,10 @@ import type { SignInResult, SignUpParams, SignUpResult, UserRole } from '../type
 
 /** Lee el rol desde los metadatos del usuario, con paciente como default. */
 export function roleOf(user: User | null | undefined): UserRole {
-  return user?.user_metadata?.role === 'odontologo' ? 'odontologo' : 'paciente';
+  const role = user?.user_metadata?.role;
+  if (role === 'admin') return 'admin';
+  if (role === 'odontologo') return 'odontologo';
+  return 'paciente';
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<SignInResult> {

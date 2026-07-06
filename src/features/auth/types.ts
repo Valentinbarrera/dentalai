@@ -1,7 +1,7 @@
 /** Contratos del dominio de autenticación. */
 
-/** Los dos tipos de cuenta de la app. */
-export type UserRole = 'paciente' | 'odontologo';
+/** Tipos de cuenta de la app. `admin` se designa a mano (no desde el registro). */
+export type UserRole = 'paciente' | 'odontologo' | 'admin';
 
 /** Estado de verificación de la matrícula (solo aplica a odontólogos). */
 export type VerificationStatus = 'pendiente' | 'verificado' | 'rechazado';
