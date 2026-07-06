@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -83,27 +83,7 @@ export default function ProfileScreen() {
           </Card>
         </Reveal>
 
-        {/* Acceso al portal profesional */}
         <Reveal index={1}>
-          <Pressable
-            onPress={() => router.push('/dentist/panel')}
-            accessibilityRole="button"
-            accessibilityLabel="Portal del profesional"
-            style={({ pressed }) => pressed && styles.pressed}>
-            <LinearGradient colors={[palette.primary, palette.primaryDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.portalCard}>
-              <View style={styles.portalIcon}>
-                <MaterialCommunityIcons name="stethoscope" size={24} color={palette.white} />
-              </View>
-              <View style={styles.flex}>
-                <Text style={styles.portalTitle}>Portal del profesional</Text>
-                <Text style={styles.portalSub}>¿Sos odontólogo? Gestioná tu agenda y pacientes.</Text>
-              </View>
-              <Ionicons name="arrow-forward" size={20} color={palette.white} />
-            </LinearGradient>
-          </Pressable>
-        </Reveal>
-
-        <Reveal index={2}>
           <View style={styles.sectionHeaderRow}>
             <View style={styles.accentBar} />
             <Text style={styles.groupLabel}>Cuenta</Text>
@@ -115,7 +95,7 @@ export default function ProfileScreen() {
           </Card>
         </Reveal>
 
-        <Reveal index={3}>
+        <Reveal index={2}>
           <View style={styles.sectionHeaderRow}>
             <View style={styles.accentBar} />
             <Text style={styles.groupLabel}>Aplicación</Text>
@@ -127,7 +107,7 @@ export default function ProfileScreen() {
           </Card>
         </Reveal>
 
-        <Reveal index={4}>
+        <Reveal index={3}>
           <Text style={styles.version}>DentalAI v3.0.0</Text>
         </Reveal>
         </View>
