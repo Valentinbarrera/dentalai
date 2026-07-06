@@ -10,7 +10,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CameraGuide } from '@/components/analysis/camera-guide';
@@ -48,6 +48,9 @@ export default function CameraScreen() {
   const [flash, setFlash] = useState<FlashMode>('auto');
   const [facing, setFacing] = useState<CameraType>('front');
   const [guide, setGuide] = useState({ w: 0, h: 0 });
+  // `true` cuando el preview quedó listo (onCameraReady). Hay que esperarlo
+  // antes de sacar fotos o grabar, sobre todo tras cambiar de modo o girar.
+  const [ready, setReady] = useState(false);
 
   // Timer visible mientras se graba el video
   useEffect(() => {
@@ -55,6 +58,12 @@ export default function CameraScreen() {
     const id = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(id);
   }, [recording]);
+
+  // La cámara se reinicializa al cambiar de modo (foto↔video) o al girarla:
+  // volvemos a esperar `onCameraReady` antes de permitir disparar/grabar.
+  useEffect(() => {
+    setReady(false);
+  }, [phase, facing]);
 
   const photoIndex = photos.length;
   const angle = PHOTO_ANGLES[Math.min(photoIndex, PHOTO_ANGLES.length - 1)];
@@ -70,7 +79,7 @@ export default function CameraScreen() {
   };
 
   const capturePhoto = async () => {
-    if (busy || phase !== 'photos') return;
+    if (busy || phase !== 'photos' || !ready) return;
     setBusy(true);
     try {
       const shot = await cameraRef.current?.takePictureAsync({ quality: 0.7, skipProcessing: true });
@@ -96,6 +105,9 @@ export default function CameraScreen() {
       cameraRef.current?.stopRecording();
       return;
     }
+    // La cámara tiene que estar lista en modo video (onCameraReady); si no,
+    // recordAsync falla en silencio. Por eso esperamos a `ready`.
+    if (!ready) return;
     if (!micPermission?.granted) {
       const res = await requestMic();
       if (!res?.granted) return;
@@ -105,8 +117,14 @@ export default function CameraScreen() {
     try {
       const rec = await cameraRef.current?.recordAsync({ maxDuration: VIDEO_CAPTURE.maxDuration });
       finish(rec?.uri ?? null);
-    } catch {
-      finish(null);
+    } catch (e) {
+      // Mostramos el error real (en vez de tragarlo) para poder diagnosticar en
+      // el device; el usuario puede reintentar o tocar "Omitir".
+      setRecording(false);
+      Alert.alert(
+        'No se pudo grabar el video',
+        e instanceof Error ? e.message : 'Probá de nuevo, o tocá "Omitir" para seguir solo con las fotos.',
+      );
     }
   };
 
@@ -170,6 +188,7 @@ export default function CameraScreen() {
           facing={facing}
           flash={flash}
           mode={phase === 'video' ? 'video' : 'picture'}
+          onCameraReady={() => setReady(true)}
         />
       ) : (
         <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
@@ -259,7 +278,11 @@ export default function CameraScreen() {
               </View>
 
               <Text style={styles.instruction}>
-                {phase === 'photos' ? angle.instruction : VIDEO_CAPTURE.instruction}
+                {!ready
+                  ? 'Preparando cámara…'
+                  : phase === 'photos'
+                    ? angle.instruction
+                    : VIDEO_CAPTURE.instruction}
               </Text>
 
               <View style={styles.progressTrack}>
@@ -284,11 +307,15 @@ export default function CameraScreen() {
                 {phase === 'photos' ? (
                   <Pressable
                     onPress={capturePhoto}
-                    disabled={busy}
+                    disabled={busy || !ready}
                     accessibilityRole="button"
                     accessibilityLabel={`Capturar ${angle.short}`}
                     accessibilityHint={`Foto ${photoIndex + 1} de ${PHOTO_ANGLES.length}`}
-                    style={({ pressed }) => [styles.shutterOuter, pressed && styles.shutterPressed]}>
+                    style={({ pressed }) => [
+                      styles.shutterOuter,
+                      (busy || !ready) && styles.shutterDisabled,
+                      pressed && styles.shutterPressed,
+                    ]}>
                     <View style={styles.shutterInner}>
                       <MaterialCommunityIcons name="camera-iris" size={30} color={palette.white} />
                     </View>
@@ -296,9 +323,15 @@ export default function CameraScreen() {
                 ) : (
                   <Pressable
                     onPress={toggleRecording}
+                    disabled={!recording && !ready}
                     accessibilityRole="button"
                     accessibilityLabel={recording ? 'Detener grabación' : 'Grabar video 3D'}
-                    style={({ pressed }) => [styles.shutterOuter, styles.recOuter, pressed && styles.shutterPressed]}>
+                    style={({ pressed }) => [
+                      styles.shutterOuter,
+                      styles.recOuter,
+                      !recording && !ready && styles.shutterDisabled,
+                      pressed && styles.shutterPressed,
+                    ]}>
                     <View style={recording ? styles.recStop : styles.recStart} />
                   </Pressable>
                 )}
@@ -527,6 +560,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   shutterPressed: { transform: [{ scale: 0.94 }] },
+  shutterDisabled: { opacity: 0.4 },
   shutterInner: {
     width: 60,
     height: 60,
