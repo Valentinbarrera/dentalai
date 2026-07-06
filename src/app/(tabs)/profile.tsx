@@ -86,7 +86,7 @@ export default function ProfileScreen() {
         {/* Acceso al portal profesional */}
         <Reveal index={1}>
           <Pressable
-            onPress={() => router.push('/portal')}
+            onPress={() => router.push('/dentist/panel')}
             accessibilityRole="button"
             accessibilityLabel="Portal del profesional"
             style={({ pressed }) => pressed && styles.pressed}>

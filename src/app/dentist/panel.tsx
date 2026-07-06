@@ -12,6 +12,7 @@ import { GradientIcon } from '@/components/ui/gradient-icon';
 import { PressableCard } from '@/components/ui/pressable-card';
 import { Reveal } from '@/components/ui/reveal';
 import { ScreenContainer } from '@/components/ui/screen-container';
+import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
 import {
   useDentistAppointments,
   useDentistPatients,
@@ -279,7 +280,7 @@ export default function PortalScreen() {
         <Reveal index={2}>
           <View style={styles.quickRow}>
             <PressableCard
-              onPress={() => router.push('/portal-profile')}
+              onPress={() => router.push('/dentist/profile')}
               accessibilityLabel="Mi perfil profesional"
               style={styles.quickCard}>
               <GradientIcon gradient={[palette.teal, palette.primary]} size={40}>
@@ -289,7 +290,7 @@ export default function PortalScreen() {
               <Text style={styles.quickSub}>Tu perfil profesional</Text>
             </PressableCard>
             <PressableCard
-              onPress={() => router.push('/portal-videos')}
+              onPress={() => router.push('/dentist/videos')}
               accessibilityLabel="Cargar videos educativos"
               style={styles.quickCard}>
               <GradientIcon gradient={[palette.primary, palette.navy]} size={40}>
@@ -419,7 +420,7 @@ export default function PortalScreen() {
                   </Pressable>
                 ))}
                 {/* TODO(fuera de scope): pantalla de listado completo de pacientes. */}
-                <Button label="Ver todos los pacientes" variant="outline" onPress={() => {}} style={styles.allBtn} />
+                <Button label="Ver todos los pacientes" variant="outline" onPress={() => router.push('/dentist/patients')} style={styles.allBtn} />
               </>
             ) : (
               <EmptyState
@@ -568,7 +569,7 @@ function ScheduleItem({
 }
 
 const styles = StyleSheet.create({
-  body: { paddingHorizontal: spacing.xl },
+  body: { paddingHorizontal: spacing.xl, paddingBottom: CONTENT_BOTTOM_INSET },
 
   bellGlass: {
     width: 44,

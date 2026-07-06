@@ -15,13 +15,19 @@ type TabConfig = {
   center?: boolean;
 };
 
-// Mapa por nombre de ruta del grupo (tabs)
+// Mapa por nombre de ruta. Cubre el grupo del paciente (tabs) y el del
+// odontólogo (dentist); cada layout solo renderiza las rutas que le pasa el navegador.
 const TABS: Record<string, TabConfig> = {
+  // Paciente
   home: { label: 'Home', lib: 'ion', icon: 'home-outline', iconActive: 'home' },
   diagnosis: { label: 'Diagnóstico', lib: 'mci', icon: 'tooth-outline', iconActive: 'tooth' },
   denta: { label: 'DENTA', lib: 'mci', icon: 'robot-happy', center: true },
   schedule: { label: 'Turnos', lib: 'ion', icon: 'calendar-outline', iconActive: 'calendar' },
   profile: { label: 'Perfil', lib: 'ion', icon: 'person-outline', iconActive: 'person' },
+  // Odontólogo
+  panel: { label: 'Panel', lib: 'mci', icon: 'view-dashboard-outline', iconActive: 'view-dashboard' },
+  patients: { label: 'Pacientes', lib: 'ion', icon: 'people-outline', iconActive: 'people' },
+  videos: { label: 'Videos', lib: 'ion', icon: 'videocam-outline', iconActive: 'videocam' },
 };
 
 function TabIcon({ lib, name, color, size }: { lib: IconLib; name: string; color: string; size: number }) {

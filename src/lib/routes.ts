@@ -11,13 +11,13 @@ export const ROUTES = {
   home: '/home' as unknown as Href,
   login: '/login' as unknown as Href,
   onboarding: '/onboarding' as unknown as Href,
-  portal: '/portal' as unknown as Href,
+  dentist: '/dentist/panel' as unknown as Href,
   admin: '/admin' as unknown as Href,
 };
 
-/** Ruta de inicio según el rol: admin→panel, odontólogo→portal, paciente→home. */
+/** Ruta de inicio según el rol: admin→panel admin, odontólogo→su panel, paciente→home. */
 export function homeForRole(role: UserRole | null | undefined): Href {
   if (role === 'admin') return ROUTES.admin;
-  if (role === 'odontologo') return ROUTES.portal;
+  if (role === 'odontologo') return ROUTES.dentist;
   return ROUTES.home;
 }

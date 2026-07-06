@@ -9,7 +9,6 @@ import { BrandBand } from '@/components/ui/brand-band';
 import { Button } from '@/components/ui/button';
 import { GradientIcon } from '@/components/ui/gradient-icon';
 import { Reveal } from '@/components/ui/reveal';
-import { getSpecialist } from '@/lib/specialists';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
 const ASPECTS = ['Puntualidad', 'Profesionalismo', 'Instalaciones', 'Trato cálido', 'Explicación clara'];
@@ -18,8 +17,13 @@ const LABELS = ['', 'Muy malo', 'Malo', 'Bueno', 'Muy bueno', '¡Excelente!'];
 export default function RateScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id?: string }>();
-  const s = getSpecialist(id);
+  // Profesional real elegido en el flujo de reserva (propagado por params).
+  const { specialistName, specialistSubtitle } = useLocalSearchParams<{
+    specialistName?: string;
+    specialistSubtitle?: string;
+  }>();
+  const nombre = specialistName ?? 'Profesional';
+  const especialidad = specialistSubtitle ?? 'Odontología general';
 
   const [rating, setRating] = useState(0);
   const [tags, setTags] = useState<string[]>([]);
@@ -50,7 +54,7 @@ export default function RateScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
       <StatusBar style="light" />
-      <BrandBand onBack={() => router.back()} title="Calificar profesional" subtitle={s.name} />
+      <BrandBand onBack={() => router.back()} title="Calificar profesional" subtitle={nombre} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* Profesional */}
@@ -59,8 +63,8 @@ export default function RateScreen() {
             <GradientIcon gradient={[palette.primary, palette.teal]} size={72} borderRadius={36}>
               <Ionicons name="person" size={28} color={palette.white} />
             </GradientIcon>
-            <Text style={styles.name}>{s.name}</Text>
-            <Text style={styles.specialty}>{s.specialty}</Text>
+            <Text style={styles.name}>{nombre}</Text>
+            <Text style={styles.specialty}>{especialidad}</Text>
           </View>
         </Reveal>
 

@@ -113,8 +113,8 @@ export default function ConfirmationScreen() {
             icon={<MaterialCommunityIcons name="tooth-outline" size={20} color={palette.white} />}
             gradient={[palette.teal, palette.primary]}
             label="PROFESIONAL"
-            value={specialistName ?? 'Dra. Elena Santos'}
-            sub={specialistSubtitle ?? 'Especialista en Ortodoncia'}
+            value={specialistName ?? 'Profesional'}
+            sub={specialistSubtitle ?? 'Odontología general'}
             subColor={palette.primary}
           />
           <DetailRow

@@ -20,6 +20,7 @@ import { BrandBand } from '@/components/ui/brand-band';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Reveal } from '@/components/ui/reveal';
+import { FLOATING_TAB_BAR } from '@/constants/layout';
 import { updateMyProfile, useMyProfile, type Profile } from '@/features/profile';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
 
@@ -84,11 +85,7 @@ export default function PortalProfileScreen() {
     <SafeAreaView style={styles.safe} edges={[]}>
       <StatusBar style="light" />
 
-      <BrandBand
-        title="Mi perfil profesional"
-        subtitle="Editá tus datos públicos"
-        onBack={() => router.back()}
-      />
+      <BrandBand title="Mi perfil profesional" subtitle="Editá tus datos públicos" />
 
       {loading ? (
         <LoadingState />
@@ -216,7 +213,14 @@ export default function PortalProfileScreen() {
             )}
           </ScrollView>
 
-          <View style={[styles.ctaBar, { paddingBottom: insets.bottom + spacing.md }]}>
+          <View
+            style={[
+              styles.ctaBar,
+              {
+                paddingBottom:
+                  insets.bottom + FLOATING_TAB_BAR.height + FLOATING_TAB_BAR.marginBottom + spacing.md,
+              },
+            ]}>
             <Button
               label="Guardar cambios"
               loading={saving}

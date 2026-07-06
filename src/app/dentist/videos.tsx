@@ -19,6 +19,7 @@ import { BrandBand } from '@/components/ui/brand-band';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Reveal } from '@/components/ui/reveal';
+import { CONTENT_BOTTOM_INSET } from '@/constants/layout';
 import { useAuth } from '@/features/auth';
 import { createVideo, deleteVideo, useMyVideos, type Video } from '@/features/videos';
 import { palette, radius, spacing, typography } from '@/theme/tokens';
@@ -96,11 +97,7 @@ export default function PortalVideosScreen() {
     <SafeAreaView style={styles.safe} edges={[]}>
       <StatusBar style="light" />
 
-      <BrandBand
-        title="Videos educativos"
-        subtitle="Cargá contenido para tus pacientes"
-        onBack={() => router.back()}
-      />
+      <BrandBand title="Videos educativos" subtitle="Cargá contenido para tus pacientes" />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -333,7 +330,7 @@ function VideoRow({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.background },
   flex: { flex: 1 },
-  content: { paddingHorizontal: spacing.xl, paddingBottom: spacing['2xl'] },
+  content: { paddingHorizontal: spacing.xl, paddingBottom: CONTENT_BOTTOM_INSET },
 
   sectionLabelRow: {
     flexDirection: 'row',
