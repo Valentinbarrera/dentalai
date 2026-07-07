@@ -6,6 +6,7 @@
  * Lee/escribe la tabla `procedures`. RLS: lectura para autenticados; escritura
  * SOLO para el rol `admin` (ver migración 0009).
  */
+import { demoActiveProcedures, demoProcedures, isDemoActive } from '@/features/demo';
 import { supabase } from '@/services/supabase';
 
 import type { Procedure, UpsertProcedureInput } from '../types';
@@ -40,6 +41,7 @@ function toProcedure(row: ProcedureRow): Procedure {
 
 /** Lista todo el catálogo (para el panel admin), por categoría y nombre. */
 export async function listProcedures(): Promise<Procedure[]> {
+  if (isDemoActive()) return demoProcedures();
   const { data, error } = await supabase
     .from(TABLE)
     .select(COLUMNS)
@@ -52,6 +54,7 @@ export async function listProcedures(): Promise<Procedure[]> {
 
 /** Lista solo los ítems activos (para armar presupuestos — Fase B). */
 export async function listActiveProcedures(): Promise<Procedure[]> {
+  if (isDemoActive()) return demoActiveProcedures();
   const { data, error } = await supabase
     .from(TABLE)
     .select(COLUMNS)

@@ -5,6 +5,7 @@
  * Lee y escribe la fila propia de la tabla `profiles` (RLS ya limita al
  * usuario autenticado). Mapea snake_case (DB) ↔ camelCase (dominio).
  */
+import { demoProfile, isDemoActive } from '@/features/demo';
 import { supabase } from '@/services/supabase';
 
 import type { Profile, ProfileRole, ProfileVerified, UpdateProfileInput } from '../types';
@@ -51,6 +52,7 @@ async function requireUserId(): Promise<string> {
 
 /** Trae el perfil del usuario autenticado. */
 export async function getMyProfile(): Promise<Profile> {
+  if (isDemoActive()) return demoProfile();
   const userId = await requireUserId();
 
   const { data, error } = await supabase
@@ -69,6 +71,19 @@ export async function getMyProfile(): Promise<Profile> {
  * actualizado.
  */
 export async function updateMyProfile(input: UpdateProfileInput): Promise<Profile> {
+  if (isDemoActive()) {
+    // Modo demo: no persistimos; devolvemos el perfil con los cambios aplicados.
+    const base = demoProfile();
+    return {
+      ...base,
+      fullName: input.fullName !== undefined ? input.fullName : base.fullName,
+      specialty: input.specialty !== undefined ? input.specialty : base.specialty,
+      matricula: input.matricula !== undefined ? input.matricula : base.matricula,
+      university: input.university !== undefined ? input.university : base.university,
+      bio: input.bio !== undefined ? input.bio : base.bio,
+      avatarUrl: input.avatarUrl !== undefined ? input.avatarUrl : base.avatarUrl,
+    };
+  }
   const userId = await requireUserId();
 
   // Armamos el patch snake_case solo con las claves definidas en el input.

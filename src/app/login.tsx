@@ -28,7 +28,7 @@ type Mode = 'login' | 'signup';
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, enterDemo } = useAuth();
 
   const [mode, setMode] = useState<Mode>('login');
   const [role, setRole] = useState<UserRole>('paciente');
@@ -93,6 +93,16 @@ export default function LoginScreen() {
   const socialSoon = () => {
     setError(null);
     setNotice('Google y Apple llegan pronto. Por ahora entrá con tu email.');
+  };
+
+  // Modo demo: entra con un usuario ficticio (sin backend) para recorrer la app.
+  const enterAsDemo = async (demoRole: UserRole) => {
+    setError(null);
+    setNotice(null);
+    setLoading(true);
+    await enterDemo(demoRole);
+    setLoading(false);
+    router.replace(homeForRole(demoRole));
   };
 
   return (
@@ -245,6 +255,20 @@ export default function LoginScreen() {
               <SocialButton icon="logo-google" label="Google" onPress={socialSoon} />
               <SocialButton icon="logo-apple" label="Apple" onPress={socialSoon} />
             </View>
+
+            {/* Modo demo: recorrer la app con datos ficticios, sin cuenta */}
+            <View style={styles.demoBox}>
+              <View style={styles.demoHeader}>
+                <MaterialCommunityIcons name="flask-outline" size={15} color={palette.primary} />
+                <Text style={styles.demoTitle}>Explorar en modo demo</Text>
+              </View>
+              <Text style={styles.demoHint}>Entrá con un usuario ficticio para ver todo sin backend.</Text>
+              <View style={styles.demoRow}>
+                <DemoChip icon="person" label="Paciente" onPress={() => enterAsDemo('paciente')} />
+                <DemoChip icon="medkit" label="Odontólogo" onPress={() => enterAsDemo('odontologo')} />
+                <DemoChip icon="settings" label="Admin" onPress={() => enterAsDemo('admin')} />
+              </View>
+            </View>
           </Animated.View>
 
           <Text style={styles.legal}>
@@ -306,6 +330,27 @@ function SocialButton({
       style={({ pressed }) => [styles.social, pressed && styles.socialPressed]}>
       <Ionicons name={icon} size={20} color={palette.textPrimary} />
       <Text style={styles.socialText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function DemoChip({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Entrar como ${label} (demo)`}
+      style={({ pressed }) => [styles.demoChip, pressed && styles.demoChipPressed]}>
+      <Ionicons name={icon} size={16} color={palette.primary} />
+      <Text style={styles.demoChipText}>{label}</Text>
     </Pressable>
   );
 }
@@ -464,6 +509,36 @@ const styles = StyleSheet.create({
   },
   socialPressed: { backgroundColor: palette.surfaceAlt },
   socialText: { ...typography.bodyStrong, color: palette.textPrimary },
+
+  /* Modo demo */
+  demoBox: {
+    marginTop: spacing.xl,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderStyle: 'dashed',
+    backgroundColor: palette.surfaceAlt,
+  },
+  demoHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  demoTitle: { ...typography.bodyStrong, color: palette.textPrimary },
+  demoHint: { ...typography.small, color: palette.textSecondary, marginTop: 4 },
+  demoRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  demoChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: palette.primary,
+    backgroundColor: palette.surface,
+  },
+  demoChipPressed: { backgroundColor: palette.primarySoft, opacity: 0.9 },
+  demoChipText: { ...typography.caption, color: palette.primary, fontWeight: '700' },
 
   legal: {
     ...typography.small,

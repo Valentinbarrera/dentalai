@@ -6,6 +6,12 @@
  * (ver `supabase/migrations/0003_appointments.sql`). El RLS decide qué
  * filas ve cada usuario según `auth.uid()`.
  */
+import {
+  demoDentistAppointments,
+  demoDentistPatients,
+  demoPatientAppointments,
+  isDemoActive,
+} from '@/features/demo';
 import { supabase } from '@/services/supabase';
 
 import type { Appointment, AppointmentStatus, CreateAppointmentInput, DentistPatient } from '../types';
@@ -75,6 +81,7 @@ function toAppointment(row: AppointmentRow): Appointment {
  * para derivar la lista de pacientes.
  */
 export async function listForDentist(dentistId: string): Promise<Appointment[]> {
+  if (isDemoActive()) return demoDentistAppointments();
   // Intentamos traer el nombre del paciente con un embed a `profiles`.
   const { data, error } = await supabase
     .from(TABLE)
@@ -107,6 +114,7 @@ export async function listForDentist(dentistId: string): Promise<Appointment[]> 
  * visita más reciente primero (para la sección "Pacientes recientes").
  */
 export async function listPatientsForDentist(dentistId: string): Promise<DentistPatient[]> {
+  if (isDemoActive()) return demoDentistPatients();
   // Reutilizamos la lectura de turnos (ya viene con el nombre embebido y
   // ordenada asc por `starts_at`), y derivamos los pacientes distintos.
   const appointments = await listForDentist(dentistId);
@@ -130,6 +138,7 @@ export async function listPatientsForDentist(dentistId: string): Promise<Dentist
  * Turnos de un paciente, ordenados por fecha de inicio (asc).
  */
 export async function listForPatient(patientId: string): Promise<Appointment[]> {
+  if (isDemoActive()) return demoPatientAppointments();
   const { data, error } = await supabase
     .from(TABLE)
     .select(COLUMNS)
@@ -148,6 +157,20 @@ export async function listForPatient(patientId: string): Promise<Appointment[]> 
  * con el paciente, el odontólogo y el horario elegidos. NO conectar todavía.
  */
 export async function createAppointment(input: CreateAppointmentInput): Promise<Appointment> {
+  if (isDemoActive()) {
+    // Modo demo: no persistimos; devolvemos un turno sintético "reservado".
+    return {
+      id: `demo-appt-${input.startsAt}`,
+      patientId: input.patientId,
+      dentistId: input.dentistId,
+      startsAt: input.startsAt,
+      durationMin: input.durationMin,
+      type: input.type,
+      status: 'pendiente',
+      note: input.note,
+      createdAt: new Date().toISOString(),
+    };
+  }
   const { data, error } = await supabase
     .from(TABLE)
     .insert({
@@ -172,6 +195,12 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
  * para confirmar/cancelar turnos desde el portal.
  */
 export async function updateStatus(id: string, status: AppointmentStatus): Promise<Appointment> {
+  if (isDemoActive()) {
+    // Modo demo: el cambio de estado es local (la agenda ya actualiza optimista).
+    const source = [...demoDentistAppointments(), ...demoPatientAppointments()];
+    const found = source.find((a) => a.id === id);
+    return { ...(found ?? source[0]), id, status };
+  }
   const { data, error } = await supabase
     .from(TABLE)
     .update({ status })

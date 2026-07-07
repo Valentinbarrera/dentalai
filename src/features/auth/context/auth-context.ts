@@ -11,9 +11,13 @@ export type AuthContextValue = {
   role: UserRole | null;
   /** `true` mientras leemos la sesión guardada al abrir la app. */
   loading: boolean;
+  /** `true` si la sesión activa es un usuario ficticio (modo demo, sin backend). */
+  isDemo: boolean;
   signIn: (email: string, password: string) => Promise<SignInResult>;
   signUp: (name: string, email: string, password: string, role: UserRole) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
+  /** Entra con un usuario ficticio del rol dado (explora la app sin cuenta real). */
+  enterDemo: (role: UserRole) => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);

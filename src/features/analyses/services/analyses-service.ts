@@ -5,6 +5,7 @@
  * Cubre dos cosas: subir las capturas al bucket privado `captures` y
  * leer/escribir las filas de la tabla `analyses`.
  */
+import { demoAnalyses, demoAnalysisById, isDemoActive } from '@/features/demo';
 import { supabase } from '@/services/supabase';
 
 import type { Analysis, AnalysisStatus, Capture } from '../types';
@@ -131,6 +132,7 @@ export async function requestAnalysis(analysisId: string): Promise<void> {
 
 /** Trae un análisis puntual por id (o `null` si no existe / no es del usuario). */
 export async function getAnalysis(id: string): Promise<Analysis | null> {
+  if (isDemoActive()) return demoAnalysisById(id);
   const { data, error } = await supabase
     .from('analyses')
     .select('id, user_id, status, result, created_at')
@@ -149,6 +151,7 @@ export async function getAnalysis(id: string): Promise<Analysis | null> {
  * por la Edge Function (Fase 3) actualizando la fila a `status: 'listo'`.
  */
 export async function listMyAnalyses(): Promise<Analysis[]> {
+  if (isDemoActive()) return demoAnalyses();
   const { data, error } = await supabase
     .from('analyses')
     .select('id, user_id, status, result, created_at')
@@ -167,6 +170,7 @@ export async function listMyAnalyses(): Promise<Analysis[]> {
  * permiso sobre ese paciente, RLS devuelve una lista vacía.
  */
 export async function listAnalysesForUser(userId: string): Promise<Analysis[]> {
+  if (isDemoActive()) return demoAnalyses();
   const { data, error } = await supabase
     .from('analyses')
     .select('id, user_id, status, result, created_at')

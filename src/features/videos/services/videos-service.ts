@@ -4,6 +4,7 @@
  *
  * Lee la tabla `videos` (biblioteca educativa de lectura general).
  */
+import { demoMyVideos, demoVideos, isDemoActive } from '@/features/demo';
 import { supabase } from '@/services/supabase';
 
 import type { CreateVideoInput, Video } from '../types';
@@ -59,6 +60,7 @@ function optional(value?: string): string | null {
  * La tabla arranca vacía: mientras no haya contenido real, devuelve `[]`.
  */
 export async function listVideos(): Promise<Video[]> {
+  if (isDemoActive()) return demoVideos();
   const { data, error } = await supabase
     .from('videos')
     .select(VIDEO_COLUMNS)
@@ -96,6 +98,7 @@ export async function createVideo(input: CreateVideoInput): Promise<Video> {
 
 /** Lista los videos cargados por un odontólogo, del más nuevo al más viejo. */
 export async function listMyVideos(authorId: string): Promise<Video[]> {
+  if (isDemoActive()) return demoMyVideos();
   const { data, error } = await supabase
     .from('videos')
     .select(VIDEO_COLUMNS)

@@ -159,7 +159,11 @@ export default function HomeScreen() {
             <LoadingCard heading="Salud Dental" />
           ) : latestDiagnosis?.result ? (
             // Hay un diagnóstico real: mostramos datos reales del resultado.
-            <PressableCard onPress={() => router.push('/diagnosis')} style={styles.healthCard}>
+            <PressableCard
+              onPress={() =>
+                router.push({ pathname: '/diagnosis', params: { analysisId: latestDiagnosis.id } })
+              }
+              style={styles.healthCard}>
               <View style={styles.healthHeader}>
                 <View style={styles.headingRow}>
                   <View style={styles.accentBar} />
@@ -220,7 +224,9 @@ export default function HomeScreen() {
               eyebrow="Último Diagnóstico"
               title={analysisStatusLabel(latestAnalysis.status)}
               subtitle={formatDate(latestAnalysis.createdAt)}
-              onPress={() => router.push('/diagnosis')}
+              onPress={() =>
+                router.push({ pathname: '/diagnosis', params: { analysisId: latestAnalysis.id } })
+              }
               footer={
                 latestAnalysis.result ? (
                   <View style={styles.linkRow}>

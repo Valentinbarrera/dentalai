@@ -6,6 +6,7 @@
  * en `public.profiles`. La policy de SELECT de la migración 0006 permite que
  * cualquier usuario autenticado los lea para elegirlos al reservar un turno.
  */
+import { demoDentists, isDemoActive } from '@/features/demo';
 import { supabase } from '@/services/supabase';
 
 import type { Dentist } from '../types';
@@ -40,6 +41,7 @@ function toDentist(row: DentistRow): Dentist {
  * (`src/app/booking/specialist.tsx`) vía `useDentists()`.
  */
 export async function listDentists(): Promise<Dentist[]> {
+  if (isDemoActive()) return demoDentists();
   const { data, error } = await supabase
     .from(TABLE)
     .select(COLUMNS)
