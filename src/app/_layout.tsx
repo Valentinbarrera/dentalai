@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { PhoneFrame } from '@/components/ui/phone-frame';
 import { AuthProvider } from '@/features/auth';
 import { palette } from '@/theme/tokens';
 
@@ -12,13 +13,15 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <AnimatedSplashOverlay />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: palette.background },
-        }}>
-        <Stack.Screen name="(tabs)" />
-      </Stack>
+      <PhoneFrame>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: palette.background },
+          }}>
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+      </PhoneFrame>
       <StatusBar style="dark" />
     </AuthProvider>
   );
