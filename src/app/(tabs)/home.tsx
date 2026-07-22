@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -106,6 +106,29 @@ export default function HomeScreen() {
   // Formato viejo (presupuesto único que devolvía la IA antes del catálogo).
   const legacyBudgetTotal = latestDiagnosis?.result?.budget?.total ?? null;
 
+  // CTA principal del hero: siempre apunta al presupuesto. Si todavía no hay
+  // (sin diagnóstico listo), cae al paso que falta para tenerlo.
+  const heroCta: { label: string; href: Href; amount: string | null } =
+    latestDiagnosis && featuredPlan
+      ? {
+          label: 'Ver mi presupuesto',
+          href: { pathname: '/diagnosis/comparador', params: { analysisId: latestDiagnosis.id } },
+          amount: money(featuredPlan.total),
+        }
+      : latestDiagnosis && legacyBudgetTotal
+        ? {
+            label: 'Ver mi presupuesto',
+            href: { pathname: '/diagnosis/presupuesto', params: { analysisId: latestDiagnosis.id } },
+            amount: legacyBudgetTotal,
+          }
+        : latestAnalysis
+          ? {
+              label: 'Ver estado de mi análisis',
+              href: { pathname: '/diagnosis', params: { analysisId: latestAnalysis.id } },
+              amount: null,
+            }
+          : { label: 'Hacer mi análisis', href: '/analysis/tutorial', amount: null };
+
   return (
     <ScreenContainer scroll padded={false} edges={[]} background={palette.background}>
       <StatusBar style="light" />
@@ -149,9 +172,13 @@ export default function HomeScreen() {
           <Text style={styles.greetName}>{firstName ? `Hola ${firstName} 👋` : '¡Hola! 👋'}</Text>
         </Reveal>
 
-        {/* DENTA IA */}
+        {/* DENTA IA — toda la fila lleva al chat */}
         <Reveal index={2}>
-          <View style={styles.heroRow}>
+          <Pressable
+            onPress={() => router.push('/denta')}
+            accessibilityRole="button"
+            accessibilityLabel="Hablar con DENTA"
+            style={({ pressed }) => [styles.heroRow, pressed && styles.pressed]}>
             <HeroMascot />
             <View style={styles.heroText}>
               <View style={styles.heroChip}>
@@ -161,15 +188,21 @@ export default function HomeScreen() {
               <Text style={styles.heroTitle}>DENTA está listo para ayudarte</Text>
               <Text style={styles.heroBody}>Preguntale lo que quieras sobre tu salud bucal</Text>
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+          </Pressable>
 
+          {/* CTA principal del home: el presupuesto. */}
           <Pressable
-            onPress={() => router.push('/denta')}
+            onPress={() => router.push(heroCta.href)}
             accessibilityRole="button"
-            accessibilityLabel="Ver recomendaciones"
+            accessibilityLabel={heroCta.label}
             style={({ pressed }) => [styles.heroCta, pressed && styles.pressed]}>
-            <Text style={styles.heroCtaText}>Ver recomendaciones</Text>
-            <Ionicons name="arrow-forward" size={18} color={palette.primary} />
+            <Text style={styles.heroCtaText}>{heroCta.label}</Text>
+            {heroCta.amount ? (
+              <Text style={styles.heroCtaAmount}>{heroCta.amount}</Text>
+            ) : (
+              <Ionicons name="arrow-forward" size={18} color={palette.primary} />
+            )}
           </Pressable>
         </Reveal>
       </LinearGradient>
@@ -718,6 +751,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   heroCtaText: { ...typography.subtitle, color: palette.primary, fontWeight: '700' },
+  heroCtaAmount: { ...typography.subtitle, color: palette.navy, fontWeight: '800' },
 
   mascotWrap: { width: 72, height: 72, alignItems: 'center', justifyContent: 'center' },
   mascotGlow: {
