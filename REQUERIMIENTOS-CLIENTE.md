@@ -6,10 +6,16 @@
 
 ---
 
-## 1. Home y acceso al presupuesto
+## 1. Home y acceso al presupuesto — ✅ HECHO (jul-22-2026)
 
-- **Botón directo a presupuestos en el home** (hoy el presupuesto está enterrado dentro del flujo de diagnóstico).
-- **Rediseñar el home** ❓ ¿rediseño visual completo o sólo reacomodar para que el presupuesto quede a mano?
+- ~~**Botón directo a presupuestos en el home**~~ → card **"Mi presupuesto"** en el home, con el total del
+  plan recomendado, "otras opciones desde $X" y link directo al comparador de los 3 planes.
+  Además se sumó **"Mi presupuesto"** al Acceso Rápido (reemplaza "Ver tratamientos", que iba al mismo lado
+  que la card de Salud Dental).
+- ~~**Rediseñar el home**~~ → se eliminó la card **"Último Diagnóstico"**, que duplicaba a "Salud Dental"
+  (mismo dato, mismo destino); su información de estado (subiendo / procesando / error) ahora vive dentro
+  de "Salud Dental". Eso liberó el lugar para el presupuesto.
+  ❓ Si querías un rediseño visual más profundo (no sólo la jerarquía), hay que definir la dirección.
 
 ## 2. Flujo del presupuesto
 

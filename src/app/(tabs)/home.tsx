@@ -60,6 +60,19 @@ function analysisStatusLabel(status: AnalysisStatus): string {
   }
 }
 
+/** Tono de la pastilla de estado de un análisis. */
+function analysisStatusTone(status: AnalysisStatus): 'success' | 'warning' | 'danger' {
+  if (status === 'listo') return 'success';
+  if (status === 'error') return 'danger';
+  return 'warning';
+}
+
+/** Formatea un número como precio, ej. 8000 -> "$8.000" (igual que en comparador/presupuesto). */
+function money(n: number): string {
+  const safe = Number.isFinite(n) ? n : 0;
+  return `$${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(safe)}`;
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -82,6 +95,16 @@ export default function HomeScreen() {
     appointments.find(
       (a) => a.status !== 'cancelado' && new Date(a.startsAt).getTime() >= now,
     ) ?? null;
+
+  // Presupuesto: sale del diagnóstico real. `plans` son los 3 planes A/B/C ya
+  // calculados por el backend contra el catálogo de precios del admin.
+  const plans = latestDiagnosis?.result?.plans ?? [];
+  const featuredPlan = plans.find((p) => p.recommended) ?? plans[0] ?? null;
+  const cheapestPlan = plans.length
+    ? plans.reduce((min, p) => (p.total < min.total ? p : min), plans[0])
+    : null;
+  // Formato viejo (presupuesto único que devolvía la IA antes del catálogo).
+  const legacyBudgetTotal = latestDiagnosis?.result?.budget?.total ?? null;
 
   return (
     <ScreenContainer scroll padded={false} edges={[]} background={palette.background}>
@@ -189,6 +212,42 @@ export default function HomeScreen() {
                 </View>
               </View>
             </PressableCard>
+          ) : latestAnalysis ? (
+            // Hay un análisis en curso (o con error) pero todavía sin resultado.
+            <PressableCard
+              onPress={() =>
+                router.push({ pathname: '/diagnosis', params: { analysisId: latestAnalysis.id } })
+              }
+              style={styles.healthCard}>
+              <View style={styles.healthHeader}>
+                <View style={styles.headingRow}>
+                  <View style={styles.accentBar} />
+                  <Text style={styles.cardHeading}>Salud Dental</Text>
+                </View>
+                <Badge
+                  label={analysisStatusLabel(latestAnalysis.status)}
+                  tone={analysisStatusTone(latestAnalysis.status)}
+                />
+              </View>
+
+              <Text style={styles.healthReadyText}>
+                {latestAnalysis.status === 'error'
+                  ? 'Tu último análisis falló. Entrá para reintentarlo.'
+                  : 'Estamos preparando tu diagnóstico. Te avisamos cuando esté listo.'}
+              </Text>
+
+              <View style={styles.divider} />
+              <View style={styles.healthFooter}>
+                <View style={styles.linkRow}>
+                  <Ionicons name="time-outline" size={13} color={palette.textMuted} />
+                  <Text style={styles.healthUpdated}>{formatDate(latestAnalysis.createdAt)}</Text>
+                </View>
+                <View style={styles.linkRow}>
+                  <Text style={styles.link}>Ver estado</Text>
+                  <Ionicons name="arrow-forward" size={15} color={palette.primary} />
+                </View>
+              </View>
+            </PressableCard>
           ) : (
             // Sin diagnóstico todavía: estado vacío honesto con CTA al análisis.
             <PressableCard onPress={() => router.push('/analysis/tutorial')} style={styles.healthCard}>
@@ -213,39 +272,91 @@ export default function HomeScreen() {
           )}
         </Reveal>
 
-        {/* Último Diagnóstico */}
+        {/* Mi presupuesto — acceso directo desde el home */}
         <Reveal index={4}>
           {analysesLoading ? (
-            <LoadingCard heading="Último Diagnóstico" />
-          ) : latestAnalysis ? (
-            <InfoCard
-              iconName="file-document-outline"
-              gradient={[palette.teal, palette.primary]}
-              eyebrow="Último Diagnóstico"
-              title={analysisStatusLabel(latestAnalysis.status)}
-              subtitle={formatDate(latestAnalysis.createdAt)}
+            <LoadingCard heading="Mi presupuesto" />
+          ) : latestDiagnosis && featuredPlan ? (
+            // Planes calculados por el backend con el catálogo de precios del admin.
+            <PressableCard
               onPress={() =>
-                router.push({ pathname: '/diagnosis', params: { analysisId: latestAnalysis.id } })
+                router.push({
+                  pathname: '/diagnosis/comparador',
+                  params: { analysisId: latestDiagnosis.id },
+                })
               }
-              footer={
-                latestAnalysis.result ? (
-                  <View style={styles.linkRow}>
-                    <Text style={styles.link}>Ver reporte</Text>
-                    <Ionicons name="arrow-forward" size={15} color={palette.primary} />
-                  </View>
-                ) : (
-                  <View style={styles.linkRow}>
-                    <Ionicons name="hourglass-outline" size={14} color={palette.textMuted} />
-                    <Text style={styles.locationText}>Aún sin resultado</Text>
-                  </View>
-                )
+              style={styles.budgetCard}>
+              <View style={styles.healthHeader}>
+                <View style={styles.headingRow}>
+                  <View style={[styles.accentBar, styles.accentBarBudget]} />
+                  <Text style={styles.cardHeading}>Mi presupuesto</Text>
+                </View>
+                <Badge label={`${plans.length} ${plans.length === 1 ? 'plan' : 'planes'}`} tone="info" />
+              </View>
+
+              <Text style={styles.budgetEyebrow}>
+                {featuredPlan.recommended ? 'PLAN RECOMENDADO' : 'PLAN SUGERIDO'}
+              </Text>
+              <Text style={styles.budgetAmount}>{money(featuredPlan.total)}</Text>
+              <Text style={styles.budgetPlanName} numberOfLines={2}>
+                {featuredPlan.title}
+              </Text>
+              {cheapestPlan && cheapestPlan.id !== featuredPlan.id ? (
+                <Text style={styles.budgetMeta}>
+                  Otras opciones desde {money(cheapestPlan.total)}
+                </Text>
+              ) : null}
+
+              <View style={styles.divider} />
+              <View style={styles.healthFooter}>
+                <View style={styles.linkRow}>
+                  <Ionicons name="time-outline" size={13} color={palette.textMuted} />
+                  <Text style={styles.healthUpdated}>{formatDate(latestDiagnosis.createdAt)}</Text>
+                </View>
+                <View style={styles.linkRow}>
+                  <Text style={styles.link}>Comparar planes</Text>
+                  <Ionicons name="arrow-forward" size={15} color={palette.primary} />
+                </View>
+              </View>
+            </PressableCard>
+          ) : latestDiagnosis && legacyBudgetTotal ? (
+            // Diagnóstico con presupuesto único (formato previo al catálogo).
+            <PressableCard
+              onPress={() =>
+                router.push({
+                  pathname: '/diagnosis/presupuesto',
+                  params: { analysisId: latestDiagnosis.id },
+                })
               }
-            />
+              style={styles.budgetCard}>
+              <View style={styles.headingRow}>
+                <View style={[styles.accentBar, styles.accentBarBudget]} />
+                <Text style={styles.cardHeading}>Mi presupuesto</Text>
+              </View>
+              <Text style={styles.budgetEyebrow}>TOTAL ESTIMADO</Text>
+              <Text style={styles.budgetAmount}>{legacyBudgetTotal}</Text>
+
+              <View style={styles.divider} />
+              <View style={styles.healthFooter}>
+                <View style={styles.linkRow}>
+                  <Ionicons name="time-outline" size={13} color={palette.textMuted} />
+                  <Text style={styles.healthUpdated}>{formatDate(latestDiagnosis.createdAt)}</Text>
+                </View>
+                <View style={styles.linkRow}>
+                  <Text style={styles.link}>Ver desglose</Text>
+                  <Ionicons name="arrow-forward" size={15} color={palette.primary} />
+                </View>
+              </View>
+            </PressableCard>
           ) : (
             <EmptyCard
-              iconName="file-document-outline"
-              eyebrow="Último Diagnóstico"
-              message="Sin diagnósticos aún. Hacé tu primer análisis."
+              iconName="calculator-variant-outline"
+              eyebrow="Mi presupuesto"
+              message={
+                latestAnalysis
+                  ? 'Se arma solo cuando tu diagnóstico esté listo.'
+                  : 'Hacé tu análisis y te armamos 3 presupuestos.'
+              }
             />
           )}
         </Reveal>
@@ -325,10 +436,19 @@ export default function HomeScreen() {
               onPress={() => router.push('/denta')}
             />
             <QuickAction
-              iconName="medical-bag"
+              iconName="calculator-variant-outline"
               gradient={[palette.teal, palette.tealDark]}
-              label="Ver tratamientos"
-              onPress={() => router.push('/diagnosis')}
+              label="Mi presupuesto"
+              onPress={() =>
+                router.push(
+                  latestDiagnosis
+                    ? {
+                        pathname: '/diagnosis/comparador',
+                        params: { analysisId: latestDiagnosis.id },
+                      }
+                    : '/diagnosis/comparador',
+                )
+              }
             />
             <QuickAction
               iconName="calendar-outline"
@@ -640,6 +760,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   healthUpdated: { ...typography.small, color: palette.textMuted },
+
+  /* Mi presupuesto */
+  budgetCard: { marginTop: spacing.lg, paddingVertical: spacing.xl },
+  accentBarBudget: { backgroundColor: palette.primary },
+  budgetEyebrow: {
+    ...typography.small,
+    color: palette.textMuted,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginTop: spacing.lg,
+  },
+  budgetAmount: {
+    fontSize: 34,
+    lineHeight: 40,
+    fontWeight: '800',
+    color: palette.navy,
+    marginTop: 2,
+  },
+  budgetPlanName: { ...typography.body, color: palette.textSecondary, marginTop: 2 },
+  budgetMeta: { ...typography.caption, color: palette.textMuted, marginTop: spacing.sm },
 
   /* Salud Dental — estado vacío */
   healthEmptyBody: { alignItems: 'center', marginTop: spacing.lg, gap: spacing.sm },
